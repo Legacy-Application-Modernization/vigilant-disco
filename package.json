@@ -1,0 +1,44 @@
+{
+  "name": "legacy-modernization-platform",
+  "version": "1.0.0",
+  "description": "AI-powered legacy code modernization platform",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client",
+    "mcp-server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:db\" \"npm run dev:server\" \"npm run dev:client\" \"npm run dev:mcp\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "dev:mcp": "cd mcp-server && npm run dev",
+    "dev:db": "docker-compose up -d postgres redis",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install && cd ../mcp-server && npm install",
+    "clean": "rm -rf node_modules server/node_modules client/node_modules mcp-server/node_modules",
+    "db:start": "docker-compose up -d postgres redis adminer",
+    "db:stop": "docker-compose down",
+    "db:reset": "cd server && npx prisma migrate reset",
+    "db:migrate": "cd server && npx prisma migrate dev",
+    "db:studio": "cd server && npx prisma studio",
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npm test",
+    "test:client": "cd client && npm test",
+    "lint": "npm run lint:server && npm run lint:client",
+    "lint:server": "cd server && npm run lint",
+    "lint:client": "cd client && npm run lint",
+    "format": "npm run format:server && npm run format:client",
+    "format:server": "cd server && npm run format",
+    "format:client": "cd client && npm run format"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
