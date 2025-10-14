@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { Home, FileText, Activity, Database, User, Settings, HelpCircle, Code } from 'lucide-react';
+import { Home, FileText, HelpCircle, Code } from 'lucide-react';
 import SidebarItem from './SidebarItem';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
