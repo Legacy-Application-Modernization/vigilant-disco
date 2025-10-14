@@ -38,18 +38,18 @@ const Sidebar: FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
               active={activeTab === 'projects'} 
               onClick={() => setActiveTab('projects')} 
             />
-            <SidebarItem 
+            {/* <SidebarItem 
               icon={<Activity size={20} />} 
               text="Reports" 
               active={activeTab === 'reports'} 
               onClick={() => setActiveTab('reports')} 
-            />
-            <SidebarItem 
+            /> */}
+            {/* <SidebarItem 
               icon={<Database size={20} />} 
               text="Templates" 
               active={activeTab === 'templates'} 
               onClick={() => setActiveTab('templates')} 
-            />
+            /> */}
             <SidebarItem 
               icon={<Code size={20} />} 
               text="Converter" 
@@ -57,8 +57,14 @@ const Sidebar: FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
               onClick={() => setActiveTab('converter')} 
             />
           </div>
+            <SidebarItem 
+                icon={<HelpCircle size={20} />} 
+                text="Help & Support" 
+                active={activeTab === 'help'} 
+                onClick={() => setActiveTab('help')} 
+              />
           
-          <div className="mt-8">
+          {/* <div className="mt-8">
             <h6 className="text-xs font-medium text-indigo-300 uppercase tracking-wider px-3 mb-2">
               Account
             </h6>
@@ -75,14 +81,9 @@ const Sidebar: FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
                 active={activeTab === 'settings'} 
                 onClick={() => setActiveTab('settings')} 
               />
-              <SidebarItem 
-                icon={<HelpCircle size={20} />} 
-                text="Help & Support" 
-                active={activeTab === 'help'} 
-                onClick={() => setActiveTab('help')} 
-              />
+            
             </div>
-          </div>
+          </div> */}
         </nav>
       </div>
       
