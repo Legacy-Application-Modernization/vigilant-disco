@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    # For production with a reverse proxy like Traefik, you can add:
+    # labels:
+    #  - "traefik.enable=true"
+    #  - "traefik.http.routers.vigilant-disco-client.rule=Host(`yourdomainname.com`)"
+    #  - "traefik.http.routers.vigilant-disco-client.entrypoints=websecure"
+    #  - "traefik.http.routers.vigilant-disco-client.tls.certresolver=letsencrypt"
