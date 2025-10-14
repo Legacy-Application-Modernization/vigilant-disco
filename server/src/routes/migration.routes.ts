@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 
 const router = Router();
 
-// Placeholder routes - implement these later
 router.post('/create', (req: Request, res: Response) => {
   res.json({ message: 'Create migration endpoint - To be implemented' });
 });

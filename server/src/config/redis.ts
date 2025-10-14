@@ -14,18 +14,17 @@ export const connectRedis = async (): Promise<void> => {
     });
 
     redis.on('connect', () => {
-      logger.info('✅ Redis connected successfully');
+      logger.info(' Redis connected successfully');
     });
 
     redis.on('error', (err) => {
-      logger.error('❌ Redis connection error:', err);
+      logger.error(' Redis connection error:', err);
     });
 
     // Test the connection
     await redis.ping();
   } catch (error) {
-    logger.error('❌ Failed to connect to Redis:', error);
-    // Don't throw - Redis is optional for MVP
+    logger.error(' Failed to connect to Redis:', error);
   }
 };
 

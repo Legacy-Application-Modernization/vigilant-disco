@@ -23,7 +23,6 @@ export const errorHandler = (
     ip: req.ip,
   });
 
-  // Don't leak error details in production
   if (process.env.NODE_ENV === 'production' && statusCode === 500) {
     message = 'Internal server error';
   }

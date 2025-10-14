@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 
 const router = Router();
 
-// Placeholder routes - implement these later
 router.post('/register', (req: Request, res: Response) => {
   res.json({ message: 'Registration endpoint - To be implemented' });
 });
