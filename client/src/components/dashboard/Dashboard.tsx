@@ -9,7 +9,6 @@ import {
   Server, 
   Check,
   ArrowRight,
-  Star,
   Shield,
   Edit
 } from 'lucide-react';
@@ -52,29 +51,29 @@ const Dashboard: FC<DashboardProps> = ({ onNewConversion }) => {
   ];
 
   // Testimonials
-  const testimonials = [
-    {
-      quote: "We modernized our entire e-commerce backend in just two weeks with this tool. What would have taken months was accomplished in days.",
-      author: "Sarah Chen",
-      position: "CTO at ShopWave",
-      company: "ShopWave",
-      avatar: "https://ui-avatars.com/api/?name=Sarah+Chen&background=6366f1&color=fff"
-    },
-    {
-      quote: "The code quality is impressive. We were able to convert our PHP monolith to a scalable microservices architecture with minimal manual intervention.",
-      author: "Michael Rodriguez",
-      position: "Lead Developer",
-      company: "FinTech Solutions",
-      avatar: "https://ui-avatars.com/api/?name=Michael+Rodriguez&background=10b981&color=fff"
-    },
-    {
-      quote: "This tool saved us thousands of development hours. The AI-powered code suggestions are like having an expert Node.js developer on your team.",
-      author: "Priya Sharma",
-      position: "Engineering Manager",
-      company: "CloudScale",
-      avatar: "https://ui-avatars.com/api/?name=Priya+Sharma&background=f59e0b&color=fff"
-    }
-  ];
+  // const testimonials = [
+  //   {
+  //     quote: "We modernized our entire e-commerce backend in just two weeks with this tool. What would have taken months was accomplished in days.",
+  //     author: "Sarah Chen",
+  //     position: "CTO at ShopWave",
+  //     company: "ShopWave",
+  //     avatar: "https://ui-avatars.com/api/?name=Sarah+Chen&background=6366f1&color=fff"
+  //   },
+  //   {
+  //     quote: "The code quality is impressive. We were able to convert our PHP monolith to a scalable microservices architecture with minimal manual intervention.",
+  //     author: "Michael Rodriguez",
+  //     position: "Lead Developer",
+  //     company: "FinTech Solutions",
+  //     avatar: "https://ui-avatars.com/api/?name=Michael+Rodriguez&background=10b981&color=fff"
+  //   },
+  //   {
+  //     quote: "This tool saved us thousands of development hours. The AI-powered code suggestions are like having an expert Node.js developer on your team.",
+  //     author: "Priya Sharma",
+  //     position: "Engineering Manager",
+  //     company: "CloudScale",
+  //     avatar: "https://ui-avatars.com/api/?name=Priya+Sharma&background=f59e0b&color=fff"
+  //   }
+  // ];
 
   return (
     <div className="space-y-8">
@@ -266,7 +265,7 @@ return res.json(users);`}
         </div>
       </div>
       
-      {/* Testimonials Slider */}
+      {/* Testimonials Slider
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900">What Our Users Say</h2>
@@ -292,7 +291,7 @@ return res.json(users);`}
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
       
       {/* Recent Projects with CTA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
