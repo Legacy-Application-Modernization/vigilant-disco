@@ -82,7 +82,7 @@ const Dashboard: FC<DashboardProps> = ({ onNewConversion }) => {
         <div className="p-8 md:p-12 flex flex-col md:flex-row items-center">
           <div className="md:w-2/3 mb-6 md:mb-0">
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Transform Legacy PHP Code into Modern Node.js Applications
+              Transform Legacy Code into Modern Applications
             </h1>
             <p className="text-indigo-100 text-lg mb-6">
               Modernize your legacy applications in minutes, not months. Our AI-powered converter transforms PHP code into clean, maintainable Node.js with 95% accuracy.
@@ -119,7 +119,7 @@ return res.json(users);`}
       </div>
       
       {/* Key Benefits Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="5x Faster Development"
           value="80%"
@@ -144,7 +144,7 @@ return res.json(users);`}
           description="with modern security standards"
           icon={<Shield className="text-blue-500" />}
         />
-      </div>
+      </div> */}
       
       {/* Feature Highlights */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
@@ -172,7 +172,7 @@ return res.json(users);`}
                   <p className="text-gray-600 text-sm">Specialized handling for popular frameworks like Laravel, Symfony, and CodeIgniter to their Node.js equivalents.</p>
                 </div>
               </div>
-              <div className="flex items-start">
+              {/* <div className="flex items-start">
                 <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
                   <Check size={16} />
                 </div>
@@ -180,7 +180,7 @@ return res.json(users);`}
                   <h3 className="text-md font-semibold">Interactive Code Editor</h3>
                   <p className="text-gray-600 text-sm">Built-in editor with syntax highlighting allows you to refine the converted code to your exact specifications.</p>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
           <div className="p-6">
@@ -203,7 +203,7 @@ return res.json(users);`}
                   <p className="text-gray-600 text-sm">Export your converted project as a ZIP, push to GitHub, or deploy directly to cloud providers.</p>
                 </div>
               </div>
-              <div className="flex items-start">
+              {/* <div className="flex items-start">
                 <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
                   <Check size={16} />
                 </div>
@@ -211,7 +211,7 @@ return res.json(users);`}
                   <h3 className="text-md font-semibold">Docker & CI/CD Integration</h3>
                   <p className="text-gray-600 text-sm">Automatically generate Docker configurations and CI/CD pipelines for your converted applications.</p>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -294,8 +294,8 @@ return res.json(users);`}
       </div> */}
       
       {/* Recent Projects with CTA */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-lg shadow">
+      <div className="grid grid-cols-12 lg:grid-cols-1 gap-0">
+        {/* <div className="lg:col-span-2 bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-900">Recent Projects</h2>
             <button className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center">
@@ -342,12 +342,12 @@ return res.json(users);`}
               </tbody>
             </table>
           </div>
-        </div>
+        </div> */}
         
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow text-white p-6 flex flex-col justify-between">
           <div>
-            <h3 className="text-xl font-bold mb-2">Ready to Modernize Your PHP Applications?</h3>
-            <p className="mb-6">Transform your legacy PHP applications into modern, scalable Node.js services in minutes.</p>
+            <h3 className="text-xl font-bold mb-2">Ready to Modernize Your Applications?</h3>
+            <p className="mb-6">Now transform your legacy PHP applications into modern, scalable Node.js services in minutes.</p>
             <ul className="space-y-2 mb-6">
               <li className="flex items-center">
                 <Check size={16} className="mr-2" /> Increased development speed
@@ -365,7 +365,7 @@ return res.json(users);`}
           </div>
           <button 
             onClick={onNewConversion}
-            className="w-full py-3 bg-white text-indigo-600 rounded-md font-semibold hover:bg-opacity-90 transition-colors mt-4"
+            className="w-[200px] py-3 bg-white text-indigo-600 rounded-md font-semibold hover:bg-opacity-90 transition-colors mt-4"
           >
             Start Free Conversion
           </button>
