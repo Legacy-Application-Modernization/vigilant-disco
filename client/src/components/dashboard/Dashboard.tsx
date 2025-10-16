@@ -7,6 +7,7 @@ import {
   Activity, 
   Server, 
   Check,
+  ArrowRight,
   Edit
 } from 'lucide-react';
 
@@ -16,35 +17,35 @@ interface DashboardProps {
 
 const Dashboard: FC<DashboardProps> = ({ onNewConversion }) => {
   // Sample projects for the "Recent Projects" section
-  // const recentProjects = [
-  //   { 
-  //     id: 1, 
-  //     name: 'E-commerce API', 
-  //     date: 'Oct 12, 2025', 
-  //     status: 'Completed',
-  //     files: 32,
-  //     loc: 4572,
-  //     coverage: 98
-  //   },
-  //   { 
-  //     id: 2, 
-  //     name: 'CRM System', 
-  //     date: 'Oct 10, 2025', 
-  //     status: 'In Progress',
-  //     files: 47,
-  //     loc: 7823,
-  //     coverage: 85
-  //   },
-  //   { 
-  //     id: 3, 
-  //     name: 'Blog Platform', 
-  //     date: 'Oct 8, 2025', 
-  //     status: 'Completed',
-  //     files: 18,
-  //     loc: 2156,
-  //     coverage: 100
-  //   }
-  // ];
+  const recentProjects = [
+    { 
+      id: 1, 
+      name: 'E-commerce API', 
+      date: 'Oct 12, 2025', 
+      status: 'Completed',
+      files: 32,
+      loc: 4572,
+      coverage: 98
+    },
+    { 
+      id: 2, 
+      name: 'CRM System', 
+      date: 'Oct 10, 2025', 
+      status: 'In Progress',
+      files: 47,
+      loc: 7823,
+      coverage: 85
+    },
+    { 
+      id: 3, 
+      name: 'Blog Platform', 
+      date: 'Oct 8, 2025', 
+      status: 'Completed',
+      files: 18,
+      loc: 2156,
+      coverage: 100
+    }
+  ];
 
   // Testimonials
   // const testimonials = [
@@ -227,8 +228,8 @@ return res.json(users);`}
             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <FileText size={20} />
             </div>
-            <h3 className="font-medium">1. Upload PHP Files</h3>
-            <p className="text-gray-500 text-sm mt-1">Upload your PHP source code files</p>
+            <h3 className="font-medium">1. Import PHP Files</h3>
+            <p className="text-gray-500 text-sm mt-1">Import your Github PHP source code files</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg text-center">
             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -290,8 +291,8 @@ return res.json(users);`}
       </div> */}
       
       {/* Recent Projects with CTA */}
-      <div className="grid grid-cols-12 lg:grid-cols-1 gap-0">
-        {/* <div className="lg:col-span-2 bg-white rounded-lg shadow">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-900">Recent Projects</h2>
             <button className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center">
@@ -338,12 +339,12 @@ return res.json(users);`}
               </tbody>
             </table>
           </div>
-        </div> */}
+        </div>
         
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow text-white p-6 flex flex-col justify-between">
           <div>
             <h3 className="text-xl font-bold mb-2">Ready to Modernize Your Applications?</h3>
-            <p className="mb-6">Now transform your legacy PHP applications into modern, scalable Node.js services in minutes.</p>
+            <p className="mb-6">Transform your legacy PHP applications into modern, scalable Node.js services in minutes.</p>
             <ul className="space-y-2 mb-6">
               <li className="flex items-center">
                 <Check size={16} className="mr-2" /> Increased development speed
@@ -361,7 +362,7 @@ return res.json(users);`}
           </div>
           <button 
             onClick={onNewConversion}
-            className="w-[200px] py-3 bg-white text-indigo-600 rounded-md font-semibold hover:bg-opacity-90 transition-colors mt-4"
+            className="w-full py-3 bg-white text-indigo-600 rounded-md font-semibold hover:bg-opacity-90 transition-colors mt-4"
           >
             Start Free Conversion
           </button>
