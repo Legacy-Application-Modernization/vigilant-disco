@@ -82,7 +82,7 @@ const Dashboard: FC<DashboardProps> = ({ onNewConversion }) => {
               Transform Legacy Code into Modern Applications
             </h1>
             <p className="text-indigo-100 text-lg mb-6">
-              Modernize your legacy applications in minutes, not months. Our AI-powered converter transforms PHP code into clean, maintainable Node.js with 95% accuracy.
+              Modernize your legacy applications in minutes, not months. Our AI-powered converter transforms PHP code into clean, maintainable Node.js.
             </p>
             <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
               <button 
@@ -144,7 +144,7 @@ return res.json(users);`}
       </div> */}
       
       {/* Feature Highlights */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
+      {/* <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-900">Why Choose Our PHP to Node.js Converter?</h2>
         </div>
@@ -168,7 +168,7 @@ return res.json(users);`}
                   <h3 className="text-md font-semibold">Framework-Aware Transformations</h3>
                   <p className="text-gray-600 text-sm">Specialized handling for popular frameworks like Laravel, Symfony, and CodeIgniter to their Node.js equivalents.</p>
                 </div>
-              </div>
+              </div> */}
               {/* <div className="flex items-start">
                 <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
                   <Check size={16} />
@@ -178,7 +178,7 @@ return res.json(users);`}
                   <p className="text-gray-600 text-sm">Built-in editor with syntax highlighting allows you to refine the converted code to your exact specifications.</p>
                 </div>
               </div> */}
-            </div>
+            {/* </div>
           </div>
           <div className="p-6">
             <div className="space-y-5">
@@ -199,7 +199,7 @@ return res.json(users);`}
                   <h3 className="text-md font-semibold">Multiple Export Options</h3>
                   <p className="text-gray-600 text-sm">Export your converted project as a ZIP, push to GitHub, or deploy directly to cloud providers.</p>
                 </div>
-              </div>
+              </div> */}
               {/* <div className="flex items-start">
                 <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
                   <Check size={16} />
@@ -209,10 +209,10 @@ return res.json(users);`}
                   <p className="text-gray-600 text-sm">Automatically generate Docker configurations and CI/CD pipelines for your converted applications.</p>
                 </div>
               </div> */}
-            </div>
+            {/* </div>
           </div>
         </div>
-      </div>
+      </div> */}
       
       {/* Process Visualization */}
       <div className="bg-white rounded-xl shadow p-6">
