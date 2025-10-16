@@ -2,17 +2,13 @@
 import type { FC } from 'react';
 import { 
   ChevronRight, 
-  Zap, 
   FileText, 
   Code, 
   Activity, 
   Server, 
   Check,
-  ArrowRight,
-  Shield,
   Edit
 } from 'lucide-react';
-import StatCard from '../ui/StatCard';
 
 interface DashboardProps {
   onNewConversion: () => void;
@@ -20,35 +16,35 @@ interface DashboardProps {
 
 const Dashboard: FC<DashboardProps> = ({ onNewConversion }) => {
   // Sample projects for the "Recent Projects" section
-  const recentProjects = [
-    { 
-      id: 1, 
-      name: 'E-commerce API', 
-      date: 'Oct 12, 2025', 
-      status: 'Completed',
-      files: 32,
-      loc: 4572,
-      coverage: 98
-    },
-    { 
-      id: 2, 
-      name: 'CRM System', 
-      date: 'Oct 10, 2025', 
-      status: 'In Progress',
-      files: 47,
-      loc: 7823,
-      coverage: 85
-    },
-    { 
-      id: 3, 
-      name: 'Blog Platform', 
-      date: 'Oct 8, 2025', 
-      status: 'Completed',
-      files: 18,
-      loc: 2156,
-      coverage: 100
-    }
-  ];
+  // const recentProjects = [
+  //   { 
+  //     id: 1, 
+  //     name: 'E-commerce API', 
+  //     date: 'Oct 12, 2025', 
+  //     status: 'Completed',
+  //     files: 32,
+  //     loc: 4572,
+  //     coverage: 98
+  //   },
+  //   { 
+  //     id: 2, 
+  //     name: 'CRM System', 
+  //     date: 'Oct 10, 2025', 
+  //     status: 'In Progress',
+  //     files: 47,
+  //     loc: 7823,
+  //     coverage: 85
+  //   },
+  //   { 
+  //     id: 3, 
+  //     name: 'Blog Platform', 
+  //     date: 'Oct 8, 2025', 
+  //     status: 'Completed',
+  //     files: 18,
+  //     loc: 2156,
+  //     coverage: 100
+  //   }
+  // ];
 
   // Testimonials
   // const testimonials = [
