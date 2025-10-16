@@ -37,10 +37,10 @@ const CodeAnalysis: FC<CodeAnalysisProps> = ({ results, onStartTransformation })
               <span className="text-gray-500">Functions</span>
               <span className="font-semibold">{results.metrics.functions}</span>
             </div>
-            <div className="flex justify-between">
+            {/* <div className="flex justify-between">
               <span className="text-gray-500">Complexity Score</span>
               <span className="font-semibold text-emerald-500">{results.metrics.complexityScore}</span>
-            </div>
+            </div> */}
           </div>
         </div>
         
@@ -95,10 +95,10 @@ const CodeAnalysis: FC<CodeAnalysisProps> = ({ results, onStartTransformation })
               <span className="text-gray-500">Node.js Equivalents</span>
               <span className="font-semibold text-emerald-500">{results.dependencies.nodejsEquivalents}</span>
             </div>
-            <div className="flex justify-between">
+            {/* <div className="flex justify-between">
               <span className="text-gray-500">Migration Difficulty</span>
               <span className="font-semibold text-amber-500">{results.dependencies.migrationDifficulty}</span>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

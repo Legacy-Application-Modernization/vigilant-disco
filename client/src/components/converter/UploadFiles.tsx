@@ -22,15 +22,15 @@ const UploadFiles: FC<UploadFilesProps> = ({ uploadedFiles, onFileUpload, onAnal
           <Upload size={28} />
         </div>
         <h2 className="text-xl font-semibold mb-2">Drop your PHP files here</h2>
-        <p className="text-gray-500 mb-4">or click to browse from your computer</p>
+        {/* <p className="text-gray-500 mb-4">or click to browse from your computer</p> */}
         
         <div className="flex gap-4">
-          <button 
+          {/* <button 
             onClick={handleFileSelect}
             className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors"
           >
             Select Files
-          </button>
+          </button> */}
           
           <button className="bg-white text-indigo-500 border border-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors">
             Import from GitHub
