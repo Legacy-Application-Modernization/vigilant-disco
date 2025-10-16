@@ -8,11 +8,11 @@ interface UploadFilesProps {
   onAnalyzeCode: () => void;
 }
 
-const UploadFiles: FC<UploadFilesProps> = ({ uploadedFiles, onFileUpload, onAnalyzeCode }) => {
+const UploadFiles: FC<UploadFilesProps> = ({ uploadedFiles, onAnalyzeCode }) => {
   // Handle file selection
-  const handleFileSelect = () => {
-    onFileUpload();
-  };
+  // const handleFileSelect = () => {
+  //   onFileUpload();
+  // };
 
   return (
     <div className="p-8">
