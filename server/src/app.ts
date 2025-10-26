@@ -18,7 +18,7 @@ class App {
 
   constructor() {
     this.app = express();
-    this.port = parseInt(process.env.PORT || '5000');
+    this.port = parseInt(process.env.PORT || '3001');
     
     this.initializeFirebase();
     this.initializeMiddleware();
@@ -52,12 +52,24 @@ class App {
     }));
 
     // CORS configuration
-    this.app.use(cors({
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-      credentials: true,
+    const corsOptions = {
+      origin: [
+        'http://localhost:5173',
+        'http://localhost:3000', 
+        'http://127.0.0.1:5173'
+      ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-    }));
+      allowedHeaders: [
+        'Content-Type', 
+        'Authorization',
+        'X-Requested-With',
+        'Accept'
+      ],
+      credentials: true,
+      optionsSuccessStatus: 200
+    };
+    
+    this.app.use(cors(corsOptions));
 
     // Compression middleware
     this.app.use(compression() as unknown as express.RequestHandler);
@@ -103,8 +115,28 @@ class App {
       });
     });
 
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.json({
+        success: true,
+        message: 'LegacyModernize API is running - Firebase Free Tier',
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+        tier: 'free'
+      });
+    });
+
+    // Test endpoint (no auth)
+    this.app.get('/test', (req, res) => {
+      res.json({
+        success: true,
+        message: 'Test endpoint working',
+        timestamp: new Date().toISOString()
+      });
+    });
+
     // API routes
-    this.app.use('/', routes);
+    this.app.use('/api/v1', routes);
   }
 
   private initializeErrorHandling(): void {
@@ -118,6 +150,7 @@ class App {
         availableEndpoints: {
           root: '/',
           health: '/health',
+          test: '/test',
           api: '/api/v1'
         }
       });
@@ -134,11 +167,12 @@ class App {
       console.log('📊 Server Configuration:');
       console.log(`   Port: ${this.port}`);
       console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`   CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
+      console.log(`   CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
       console.log('');
       console.log('📡 Available Endpoints:');
       console.log(`   Root: http://localhost:${this.port}/`);
       console.log(`   Health Check: http://localhost:${this.port}/health`);
+      console.log(`   Test: http://localhost:${this.port}/test`);
       console.log(`   API Base: http://localhost:${this.port}/api/v1`);
       console.log(`   Users: http://localhost:${this.port}/api/v1/users`);
       console.log(`   Projects: http://localhost:${this.port}/api/v1/projects`);

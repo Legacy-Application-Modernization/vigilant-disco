@@ -6,11 +6,9 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   updateProfile,
-  type User,
   type AuthError
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebase/config';
+import { auth } from '../../config/firebase'; // Fixed import path
 
 interface FormData {
   email: string;
@@ -83,22 +81,6 @@ const LoginRegister: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Create user document in Firestore
-  const createUserDocument = async (user: User, displayName?: string): Promise<void> => {
-    try {
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        email: user.email,
-        displayName: displayName || user.displayName,
-        createdAt: new Date(),
-        subscription: 'free',
-        projectsCount: 0
-      });
-    } catch (error) {
-      console.error('Error creating user document:', error);
-    }
-  };
-
   // Handle form submission
   const handleSubmit = async (): Promise<void> => {
     if (!validateForm()) return;
@@ -108,30 +90,44 @@ const LoginRegister: React.FC = () => {
 
     try {
       if (isLogin) {
-        // Login
+        // Login - Firebase Auth only
         await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        // User profile will be fetched by AuthContext
       } else {
-        // Register
+        // Register - Firebase Auth + update profile
         const userCredential = await createUserWithEmailAndPassword(
           auth, 
           formData.email, 
           formData.password
         );
         
-        // Update user profile
+        // Update Firebase user profile
         await updateProfile(userCredential.user, {
           displayName: formData.fullName
         });
 
-        // Create user document
-        await createUserDocument(userCredential.user, formData.fullName);
+        // Backend API will handle user initialization automatically
+        // when AuthContext detects the new user
       }
     } catch (error) {
       console.error('Auth error:', error);
       const authError = error as AuthError;
-      setErrors({ 
-        submit: authError.message.replace('Firebase: ', '').replace('auth/', '') 
-      });
+      let errorMessage = authError.message.replace('Firebase: ', '').replace('auth/', '');
+      
+      // Make error messages more user-friendly
+      if (authError.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists';
+      } else if (authError.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters';
+      } else if (authError.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email';
+      } else if (authError.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password';
+      } else if (authError.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+      }
+      
+      setErrors({ submit: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -144,16 +140,29 @@ const LoginRegister: React.FC = () => {
 
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      provider.addScope('email');
+      provider.addScope('profile');
       
-      // Create user document if new user
-      await createUserDocument(result.user, result.user.displayName || undefined);
+      const result = await signInWithPopup(auth, provider);
+      console.log('Google sign-in successful:', result.user.email);
+      
+      // Backend API will handle user initialization automatically
+      // when AuthContext detects the new user
     } catch (error) {
       console.error('Google sign-in error:', error);
       const authError = error as AuthError;
-      setErrors({ 
-        submit: authError.message.replace('Firebase: ', '').replace('auth/', '') 
-      });
+      let errorMessage = authError.message.replace('Firebase: ', '').replace('auth/', '');
+      
+      // Handle specific Google auth errors
+      if (authError.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Sign-in was cancelled';
+      } else if (authError.code === 'auth/popup-blocked') {
+        errorMessage = 'Pop-up was blocked. Please allow pop-ups and try again';
+      } else if (authError.code === 'auth/cancelled-popup-request') {
+        errorMessage = 'Sign-in was cancelled';
+      }
+      
+      setErrors({ submit: errorMessage });
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,3 @@
-// src/components/dashboard/Dashboard.tsx
 import type { FC } from 'react';
 import { 
   ChevronRight, 
@@ -8,69 +7,45 @@ import {
   Server, 
   Check,
   ArrowRight,
-  Edit
+  Edit,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
+import { useProjects } from '../../hooks/useProjects';
+import { formatDate } from '../../utils/dataUtils';
 
 interface DashboardProps {
   onNewConversion: () => void;
 }
 
 const Dashboard: FC<DashboardProps> = ({ onNewConversion }) => {
-  // Sample projects for the "Recent Projects" section
-  const recentProjects = [
-    { 
-      id: 1, 
-      name: 'E-commerce API', 
-      date: 'Oct 12, 2025', 
-      status: 'Completed',
-      files: 32,
-      loc: 4572,
-      coverage: 98
-    },
-    { 
-      id: 2, 
-      name: 'CRM System', 
-      date: 'Oct 10, 2025', 
-      status: 'In Progress',
-      files: 47,
-      loc: 7823,
-      coverage: 85
-    },
-    { 
-      id: 3, 
-      name: 'Blog Platform', 
-      date: 'Oct 8, 2025', 
-      status: 'Completed',
-      files: 18,
-      loc: 2156,
-      coverage: 100
-    }
-  ];
+  const { projects, loading, error } = useProjects();
+  
+  // Get recent projects (limit to 5 for dashboard)
+  const recentProjects = projects.slice(0, 5);
 
-  // Testimonials
-  // const testimonials = [
-  //   {
-  //     quote: "We modernized our entire e-commerce backend in just two weeks with this tool. What would have taken months was accomplished in days.",
-  //     author: "Sarah Chen",
-  //     position: "CTO at ShopWave",
-  //     company: "ShopWave",
-  //     avatar: "https://ui-avatars.com/api/?name=Sarah+Chen&background=6366f1&color=fff"
-  //   },
-  //   {
-  //     quote: "The code quality is impressive. We were able to convert our PHP monolith to a scalable microservices architecture with minimal manual intervention.",
-  //     author: "Michael Rodriguez",
-  //     position: "Lead Developer",
-  //     company: "FinTech Solutions",
-  //     avatar: "https://ui-avatars.com/api/?name=Michael+Rodriguez&background=10b981&color=fff"
-  //   },
-  //   {
-  //     quote: "This tool saved us thousands of development hours. The AI-powered code suggestions are like having an expert Node.js developer on your team.",
-  //     author: "Priya Sharma",
-  //     position: "Engineering Manager",
-  //     company: "CloudScale",
-  //     avatar: "https://ui-avatars.com/api/?name=Priya+Sharma&background=f59e0b&color=fff"
-  //   }
-  // ];
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'in-progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'planning':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'draft':
+        return 'bg-gray-100 text-gray-800';
+      case 'archived':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    return status.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
 
   return (
     <div className="space-y-8">
@@ -114,105 +89,6 @@ return res.json(users);`}
           </div>
         </div>
       </div>
-      
-      {/* Key Benefits Section */}
-      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="5x Faster Development"
-          value="80%"
-          change="Time Saved"
-          positive={true}
-          description="compared to manual conversion"
-          icon={<Zap className="text-indigo-500" />}
-        />
-        <StatCard
-          title="High Quality Code"
-          value="95%"
-          change="Accuracy"
-          positive={true}
-          description="with minimal manual edits needed"
-          icon={<Code className="text-emerald-500" />}
-        />
-        <StatCard
-          title="Enterprise Ready"
-          value="100%"
-          change="Compliant"
-          positive={true}
-          description="with modern security standards"
-          icon={<Shield className="text-blue-500" />}
-        />
-      </div> */}
-      
-      {/* Feature Highlights */}
-      {/* <div className="bg-white rounded-xl shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900">Why Choose Our PHP to Node.js Converter?</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-          <div className="p-6">
-            <div className="space-y-5">
-              <div className="flex items-start">
-                <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
-                  <Check size={16} />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-md font-semibold">AI-Powered Code Analysis</h3>
-                  <p className="text-gray-600 text-sm">Deep analysis of your codebase to identify patterns, dependencies, and optimal conversion strategies.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
-                  <Check size={16} />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-md font-semibold">Framework-Aware Transformations</h3>
-                  <p className="text-gray-600 text-sm">Specialized handling for popular frameworks like Laravel, Symfony, and CodeIgniter to their Node.js equivalents.</p>
-                </div>
-              </div> */}
-              {/* <div className="flex items-start">
-                <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
-                  <Check size={16} />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-md font-semibold">Interactive Code Editor</h3>
-                  <p className="text-gray-600 text-sm">Built-in editor with syntax highlighting allows you to refine the converted code to your exact specifications.</p>
-                </div>
-              </div> */}
-            {/* </div>
-          </div>
-          <div className="p-6">
-            <div className="space-y-5">
-              <div className="flex items-start">
-                <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
-                  <Check size={16} />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-md font-semibold">TypeScript Support</h3>
-                  <p className="text-gray-600 text-sm">Option to convert directly to TypeScript with automatically inferred types for stronger code quality.</p>
-                </div>
-              </div>
-              <div className="flex items-start">
-                <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
-                  <Check size={16} />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-md font-semibold">Multiple Export Options</h3>
-                  <p className="text-gray-600 text-sm">Export your converted project as a ZIP, push to GitHub, or deploy directly to cloud providers.</p>
-                </div>
-              </div> */}
-              {/* <div className="flex items-start">
-                <div className="mt-1 bg-indigo-100 rounded-full p-1.5 text-indigo-600">
-                  <Check size={16} />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-md font-semibold">Docker & CI/CD Integration</h3>
-                  <p className="text-gray-600 text-sm">Automatically generate Docker configurations and CI/CD pipelines for your converted applications.</p>
-                </div>
-              </div> */}
-            {/* </div>
-          </div>
-        </div>
-      </div> */}
       
       {/* Process Visualization */}
       <div className="bg-white rounded-xl shadow p-6">
@@ -262,34 +138,6 @@ return res.json(users);`}
         </div>
       </div>
       
-      {/* Testimonials Slider
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900">What Our Users Say</h2>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-gray-50 rounded-lg p-5">
-                <div className="flex items-center mb-4">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} size={16} className="text-yellow-400 fill-current" />
-                  ))}
-                </div>
-                <p className="text-gray-700 italic mb-4">"{testimonial.quote}"</p>
-                <div className="flex items-center">
-                  <img src={testimonial.avatar} alt={testimonial.author} className="w-10 h-10 rounded-full mr-3" />
-                  <div>
-                    <p className="font-medium text-gray-900">{testimonial.author}</p>
-                    <p className="text-sm text-gray-500">{testimonial.position}, {testimonial.company}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div> */}
-      
       {/* Recent Projects with CTA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-lg shadow">
@@ -299,48 +147,114 @@ return res.json(users);`}
               View All <ArrowRight className="ml-1 h-4 w-4" />
             </button>
           </div>
-          <div className="p-0">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead>
-                <tr>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Files</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentProjects.map((project) => (
-                  <tr key={project.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{project.name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{project.date}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span 
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${project.status === 'Completed' 
-                            ? 'bg-green-100 text-green-800' 
-                            : project.status === 'In Progress' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}
-                      >
-                        {project.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {project.files}
-                    </td>
+          
+          {/* Loading State */}
+          {loading && (
+            <div className="p-8 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-4" />
+              <p className="text-gray-500">Loading your projects...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="p-8 text-center">
+              <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 mb-4">Failed to load projects</p>
+              <p className="text-gray-500 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && recentProjects.length === 0 && (
+            <div className="p-8 text-center">
+              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
+              <p className="text-gray-500 mb-6">Get started by creating your first conversion project.</p>
+              <button 
+                onClick={onNewConversion}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Create First Project
+              </button>
+            </div>
+          )}
+
+          {/* Projects Table */}
+          {!loading && !error && recentProjects.length > 0 && (
+            <div className="p-0">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead>
+                  <tr>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created
+                    </th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Language
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {recentProjects.map((project) => (
+                    <tr key={project.id} className="hover:bg-gray-50 cursor-pointer">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {project.name}
+                          </div>
+                          {project.description && (
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {project.description}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {formatDate(project.createdAt)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span 
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(project.status)}`}
+                        >
+                          {formatStatus(project.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {project.sourceLanguage}
+                          {project.targetLanguage && (
+                            <span className="text-indigo-600">
+                              {' → '}{project.targetLanguage}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Show more projects hint */}
+              {projects.length > 5 && (
+                <div className="px-6 py-3 bg-gray-50 border-t text-center">
+                  <p className="text-sm text-gray-500">
+                    Showing 5 of {projects.length} projects
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
+        {/* CTA Section */}
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow text-white p-6 flex flex-col justify-between">
           <div>
             <h3 className="text-xl font-bold mb-2">Ready to Modernize Your Applications?</h3>

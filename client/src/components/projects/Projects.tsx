@@ -1,102 +1,120 @@
-import { Search, Filter, ChevronRight } from 'lucide-react';
-import type { Project } from '../../types/project';
+import React, { useState } from 'react';
+import { Search, Filter, Plus } from 'lucide-react';
+import { useProjects } from '../../hooks/useProjects';
 import ProjectCard from './ProjectCard';
-import type { FC } from 'react';
-const Projects: FC = () => {
-  // Sample projects data
-  const projects: Project[] = [
-    {
-      id: 1,
-      name: 'E-commerce API',
-      description: 'Laravel e-commerce API migrated to Express.js',
-      lastUpdated: 'Oct 12, 2025',
-      status: 'Completed',
-      progress: 100,
-      framework: 'Laravel'
-    },
-    {
-      id: 2,
-      name: 'CRM System',
-      description: 'Customer relationship management system conversion',
-      lastUpdated: 'Oct 10, 2025',
-      status: 'In Progress',
-      progress: 65,
-      framework: 'Laravel'
-    },
-    {
-      id: 3,
-      name: 'Blog Platform',
-      description: 'Wordpress-like blog platform migration',
-      lastUpdated: 'Oct 8, 2025',
-      status: 'Completed',
-      progress: 100,
-      framework: 'CodeIgniter'
-    },
-    {
-      id: 4,
-      name: 'Payment Gateway',
-      description: 'Payment processing service integration',
-      lastUpdated: 'Oct 5, 2025',
-      status: 'Needs Review',
-      progress: 92,
-      framework: 'Symfony'
-    },
-    {
-      id: 5,
-      name: 'User Authentication',
-      description: 'OAuth2 implementation for user auth',
-      lastUpdated: 'Oct 3, 2025',
-      status: 'Completed',
-      progress: 100,
-      framework: 'Laravel'
-    },
-    {
-      id: 6,
-      name: 'Content Management',
-      description: 'CMS system with admin dashboard',
-      lastUpdated: 'Oct 1, 2025',
-      status: 'In Progress',
-      progress: 48,
-      framework: 'CakePHP'
+
+interface ProjectsProps {
+  onNewConversion: () => void;
+}
+
+const Projects: React.FC<ProjectsProps> = ({ onNewConversion }) => {
+  const { projects, loading, error, updateProject, deleteProject } = useProjects();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [frameworkFilter, setFrameworkFilter] = useState('');
+
+  // Filter projects based on search and filters
+  const filteredProjects = projects.filter(project => {
+    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         project.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = !statusFilter || project.status === statusFilter;
+    const matchesFramework = !frameworkFilter || project.sourceLanguage === frameworkFilter;
+    
+    return matchesSearch && matchesStatus && matchesFramework;
+  });
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      try {
+        await deleteProject(projectId);
+      } catch (error: any) {
+        console.error('Error deleting project:', error);
+        alert('Failed to delete project: ' + error.message);
+      }
     }
-  ];
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <span className="ml-2 text-gray-600">Loading projects...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+        </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+          Error loading projects: {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-        <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center">
-          New Project <ChevronRight className="ml-1 h-4 w-4" />
+        <button 
+          onClick={onNewConversion}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center transition-colors"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Project
         </button>
       </div>
       
       {/* Filters */}
       <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
-        <div className="relative">
+        <div className="relative flex-1 max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="h-4 w-4 text-gray-400" />
           </div>
           <input
             type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md text-sm placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
             placeholder="Search projects..."
           />
         </div>
         <div className="flex space-x-4">
-          <select className="text-sm border-gray-300 rounded-md">
-            <option>All Statuses</option>
-            <option>In Progress</option>
-            <option>Completed</option>
-            <option>Needs Review</option>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">All Statuses</option>
+            <option value="draft">Draft</option>
+            <option value="planning">Planning</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="archived">Archived</option>
           </select>
-          <select className="text-sm border-gray-300 rounded-md">
-            <option>All Frameworks</option>
-            <option>Laravel</option>
-            <option>CodeIgniter</option>
-            <option>Symfony</option>
-            <option>CakePHP</option>
+          <select 
+            value={frameworkFilter}
+            onChange={(e) => setFrameworkFilter(e.target.value)}
+            className="text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="">All Languages</option>
+            <option value="php">PHP</option>
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="csharp">C#</option>
+            <option value="cpp">C++</option>
           </select>
-          <button className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 flex items-center bg-white hover:bg-gray-50">
+          <button className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 flex items-center bg-white hover:bg-gray-50 transition-colors">
             <Filter className="h-4 w-4 mr-1" />
             More Filters
           </button>
@@ -104,41 +122,72 @@ const Projects: FC = () => {
       </div>
       
       {/* Projects List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
-      
-      {/* Pagination */}
-      <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow sm:px-6">
-        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">6</span> of{' '}
-              <span className="font-medium">12</span> results
-            </p>
-          </div>
-          <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-              <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span className="sr-only">Previous</span>
-                Previous
-              </button>
-              <button className="relative inline-flex items-center px-4 py-2 border border-indigo-500 bg-indigo-50 text-sm font-medium text-indigo-600">
-                1
-              </button>
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                2
-              </button>
-              <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span className="sr-only">Next</span>
-                Next
-              </button>
-            </nav>
+      {filteredProjects.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-gray-500">
+            {projects.length === 0 ? (
+              <div className="max-w-md mx-auto">
+                <div className="mb-4">
+                  <Plus className="mx-auto h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Create your first legacy modernization project to get started transforming your code.
+                </p>
+                <button 
+                  onClick={onNewConversion}
+                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Your First Project
+                </button>
+              </div>
+            ) : (
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No projects match your filters</h3>
+                <p className="text-sm">Try adjusting your search terms or filters to find what you're looking for.</p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredProjects.map((project) => (
+            <ProjectCard 
+              key={project.id} 
+              project={project} 
+              onDelete={handleDeleteProject}
+              onUpdate={updateProject}
+            />
+          ))}
+        </div>
+      )}
+      
+      {/* Pagination */}
+      {filteredProjects.length > 0 && (
+        <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow sm:px-6">
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredProjects.length}</span> of{' '}
+                <span className="font-medium">{projects.length}</span> results
+              </p>
+            </div>
+            {projects.length > filteredProjects.length && (
+              <div>
+                <p className="text-sm text-gray-500">
+                  ({projects.length - filteredProjects.length} filtered out)
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="sm:hidden">
+            <p className="text-sm text-gray-700">
+              {filteredProjects.length} of {projects.length} projects
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

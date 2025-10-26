@@ -1,9 +1,11 @@
-// src/App.tsx
 import { useState, useEffect } from 'react';
 import { type User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase/config';
 
-// Original Components - keeping the original imports
+// Auth Context
+import { AuthProvider } from './contexts/AuthContext';
+
+// Original Components
 import Header from './components/layout/Header';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
@@ -17,7 +19,7 @@ import CodeTransformation from './components/converter/CodeTransformation';
 import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
 
-// Authentication Component (only shows when not logged in)
+// Authentication Component
 import LoginRegister from './components/auth/LoginRegister';
 
 // Original Types and Services
@@ -33,13 +35,13 @@ interface UploadedFile {
   type: string;
 }
 
-const App: React.FC = () => {
-  // Firebase Authentication State
+// Main App Content Component (wrapped by AuthProvider)
+const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<Error | null>(null);
 
-  // Original App State (restored)
+  // Original App State
   const [_mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; sessionToken: string | null }>({ 
     isConnected: false, 
     sessionToken: null 
@@ -88,7 +90,7 @@ const App: React.FC = () => {
     }
   }, [user]);
 
-  // Show loading only during initial auth check
+  // Show loading during auth check
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -100,7 +102,7 @@ const App: React.FC = () => {
     );
   }
 
-  // Show auth error if needed
+  // Show auth error
   if (authError) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -122,7 +124,7 @@ const App: React.FC = () => {
     return <LoginRegister />;
   }
 
-  // Original sample data (restored)
+  // Original sample data (for converter)
   const codeTransformation: TransformationData = {
     originalCode: `<?php
     
@@ -186,7 +188,7 @@ class UserController {
     { name: 'Dockerfile', type: 'file', level: 1 },
   ];
 
-  // Original helper functions (restored)
+  // Helper functions
   const goToStep = (step: number): void => {
     if (step >= 1 && step <= 5) {
       setCurrentStep(step);
@@ -238,8 +240,12 @@ class UserController {
     });
     goToStep(2);
   };
+  const handleNewConversion = () => {
+  // Navigate to conversion flow
+  setActiveTab("converter"); // or whatever your navigation logic is
+};
 
-  // Original render functions (restored)
+  // Render functions
   const renderMainContent = () => {
     if (activeTab === 'converter') {
       return (
@@ -259,7 +265,7 @@ class UserController {
       case 'dashboard':
         return <Dashboard onNewConversion={() => setActiveTab('converter')} />;
       case 'projects':
-        return <Projects />;
+        return <Projects onNewConversion={handleNewConversion} />;
       case 'reports':
         return <Reports />;
       case 'profile':
@@ -322,17 +328,14 @@ class UserController {
     }
   };
 
-  // Original app layout (restored) with user prop added to components that need it
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar - pass user for auth features */}
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={(tab) => setActiveTab(tab)}
         user={user}
       />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header user={user} />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
@@ -340,6 +343,15 @@ class UserController {
         </main>
       </div>
     </div>
+  );
+};
+
+// Main App Component with AuthProvider
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
