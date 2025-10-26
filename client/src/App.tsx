@@ -1,4 +1,9 @@
+// src/App.tsx
 import { useState, useEffect } from 'react';
+import { type User, onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase/config';
+
+// Original Components - keeping the original imports
 import Header from './components/layout/Header';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
@@ -11,51 +16,40 @@ import CodeAnalysis from './components/converter/CodeAnalysis';
 import CodeTransformation from './components/converter/CodeTransformation';
 import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
+
+// Authentication Component (only shows when not logged in)
+import LoginRegister from './components/auth/LoginRegister';
+
+// Original Types and Services
 import type { AnalysisResult, ConversionOptions, FileStructure, TransformationData } from './types/conversion';
-// import McpConnectionDialog from './components/McpConnectionDialog';
 import { mcpService } from './services/mcpService';
 import { codeImprovementService } from './services/codeImprovementService';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
-const App = () => {
-  // Main navigation state
-  // const [showConnectionDialog, setShowConnectionDialog] = useState(false);
-  // Using _mcpStatus to indicate it's used in UI rendering later
-  const [_mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; sessionToken: string | null }>({ isConnected: false, sessionToken: null });
+interface UploadedFile {
+  name: string;
+  size: string;
+  type: string;
+}
+
+const App: React.FC = () => {
+  // Firebase Authentication State
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [authError, setAuthError] = useState<Error | null>(null);
+
+  // Original App State (restored)
+  const [_mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; sessionToken: string | null }>({ 
+    isConnected: false, 
+    sessionToken: null 
+  });
   
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-useEffect(() => {
-    const status = mcpService.getConnectionStatus();
-    setMcpStatus(status);
-    
-    // if (!status.isConnected) {
-    //   setShowConnectionDialog(true);
-    // }
-  }, []);
-  
-  // const handleConnectionSuccess = () => {
-  //   setShowConnectionDialog(false);
-  //   setMcpStatus(mcpService.getConnectionStatus());
-  // };
-  
-  // Uncomment when disconnect functionality is needed in the UI
-  // const handleDisconnect = () => {
-  //   mcpService.disconnect();
-  //   setMcpStatus(mcpService.getConnectionStatus());
-  //   setShowConnectionDialog(true);
-  // };
-  // Converter state
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{
-    name: string;
-    size: string;
-    type: string;
-  }>>([]);
-
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
 
-  // Keeping setTransformationOptions for future use
   const [transformationOptions] = useState<ConversionOptions>({
     useAsync: true,
     convertToTypeScript: false,
@@ -64,9 +58,71 @@ useEffect(() => {
     includeDocker: false,
     generateUnitTests: false
   });
-// Handle transformation has been incorporated directly into the onReviewChanges callback
 
-  // Sample code transformation data
+  // Firebase Auth Listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        setUser(user);
+        setAuthLoading(false);
+      },
+      (error) => {
+        setAuthError(error);
+        setAuthLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Original MCP Service Effect
+  useEffect(() => {
+    if (user) {
+      try {
+        const status = mcpService.getConnectionStatus();
+        setMcpStatus(status);
+      } catch (error) {
+        console.warn('MCP service not available:', error);
+      }
+    }
+  }, [user]);
+
+  // Show loading only during initial auth check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth error if needed
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Authentication Error: {authError.message}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-indigo-600 text-white px-4 py-2 rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login screen if not authenticated
+  if (!user) {
+    return <LoginRegister />;
+  }
+
+  // Original sample data (restored)
   const codeTransformation: TransformationData = {
     originalCode: `<?php
     
@@ -106,7 +162,6 @@ class UserController {
 `
   };
 
-  // Sample transformation summary data
   const transformationSummary = {
     filesConverted: 12,
     linesOfCode: 1247,
@@ -115,7 +170,6 @@ class UserController {
     confidence: 85
   };
 
-  // Sample file structure data
   const fileStructure: FileStructure[] = [
     { name: 'my-nodejs-app/', type: 'folder', level: 0 },
     { name: 'src/', type: 'folder', level: 1 },
@@ -132,17 +186,15 @@ class UserController {
     { name: 'Dockerfile', type: 'file', level: 1 },
   ];
 
-  // Navigate between steps in converter
-  const goToStep = (step: number) => {
+  // Original helper functions (restored)
+  const goToStep = (step: number): void => {
     if (step >= 1 && step <= 5) {
       setCurrentStep(step);
     }
   };
 
-  // Handle file upload
-  const handleFileUpload = () => {
-    // In a real app, you would process the files here
-    const sampleUploadedFiles = [
+  const handleFileUpload = (): void => {
+    const sampleUploadedFiles: UploadedFile[] = [
       {
         name: 'UserController.php',
         size: '2.4 KB',
@@ -163,9 +215,7 @@ class UserController {
     setUploadedFiles(sampleUploadedFiles);
   };
 
-  // Analyze code
-  const analyzeCode = () => {
-    // In a real app, you would analyze the code here
+  const analyzeCode = (): void => {
     setAnalysisResults({
       metrics: {
         totalLinesOfCode: 1247,
@@ -189,7 +239,7 @@ class UserController {
     goToStep(2);
   };
 
-  // Render the main content based on active tab
+  // Original render functions (restored)
   const renderMainContent = () => {
     if (activeTab === 'converter') {
       return (
@@ -213,13 +263,12 @@ class UserController {
       case 'reports':
         return <Reports />;
       case 'profile':
-        return <UserProfile />;
+        return <UserProfile user={user} />;
       default:
         return <Dashboard onNewConversion={() => setActiveTab('converter')}/>;
     }
   };
 
-  // Render the appropriate converter step
   const renderConverterStep = () => {
     switch (currentStep) {
       case 1:
@@ -244,10 +293,9 @@ class UserController {
             transformedCode={codeTransformation.transformedCode}
             options={transformationOptions}
             onReviewChanges={(_) => {
-            // Just advance to the next step, we don't need to store the files
-            goToStep(4);
-          }}
-            mcpService={codeImprovementService} // Pass the improvement service
+              goToStep(4);
+            }}
+            mcpService={codeImprovementService}
           />
         );
       case 4:
@@ -274,35 +322,19 @@ class UserController {
     }
   };
 
+  // Original app layout (restored) with user prop added to components that need it
   return (
     <div className="flex h-screen bg-gray-100">
-       {/* <McpConnectionDialog
-        isOpen={showConnectionDialog}
-        onClose={() => setShowConnectionDialog(false)}
-        onSuccess={handleConnectionSuccess}
-      /> */}
-      
-      {/* Show connection status */}
-        {/* <div className="flex items-center">
-          <div className={`w-2 h-2 rounded-full ${mcpStatus.isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="ml-2 text-sm">
-            MCP Server: {mcpStatus.isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-          {mcpStatus.isConnected && (
-            <button 
-              onClick={handleDisconnect}
-              className="ml-2 text-xs text-indigo-600 hover:underline"
-            >
-              Disconnect
-            </button>
-          )}
-        </div> */}
-      {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={(tab) => setActiveTab(tab)} />
+      {/* Sidebar - pass user for auth features */}
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={(tab) => setActiveTab(tab)}
+        user={user}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+        <Header user={user} />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
           {renderMainContent()}
         </main>

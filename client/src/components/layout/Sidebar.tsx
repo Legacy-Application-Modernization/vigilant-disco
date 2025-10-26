@@ -1,93 +1,122 @@
-import type { FC } from 'react';
-import { Home, FileText, HelpCircle, Code } from 'lucide-react';
-import SidebarItem from './SidebarItem';
+// src/components/layout/Sidebar.tsx
+import React from 'react';
+import { signOut, type User } from 'firebase/auth';
+import { auth } from '../../firebase/config';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
 interface SidebarProps {
-  activeTab: string;
+  activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  user?: User | null;
 }
 
-const Sidebar: FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user }) => {
+  const handleLogout = async (): Promise<void> => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
-    <div className="w-64 bg-indigo-800 text-white flex flex-col">
+    <div className="bg-indigo-800 w-64 min-h-screen flex flex-col">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-indigo-700">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-white rounded-md flex items-center justify-center">
-            <Code className="text-indigo-800 w-5 h-5" />
+      <div className="p-6">
+        <div className="flex items-center space-x-3">
+          <div className="bg-white p-2 rounded-lg">
+            <svg className="w-6 h-6 text-indigo-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
           </div>
-          <span className="text-xl font-semibold">LegacyModernize</span>
+          <span className="text-xl font-bold text-white">LegacyModernize</span>
         </div>
       </div>
-      
+
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4">
-        <nav className="px-4">
-          <div className="space-y-1">
-            <SidebarItem 
-              icon={<Home size={20} />} 
-              text="Dashboard" 
-              active={activeTab === 'dashboard'} 
-              onClick={() => setActiveTab('dashboard')} 
-            />
-            <SidebarItem 
-              icon={<FileText size={20} />} 
-              text="Projects" 
-              active={activeTab === 'projects'} 
-              onClick={() => setActiveTab('projects')} 
-            />
-            {/* <SidebarItem 
-              icon={<Activity size={20} />} 
-              text="Reports" 
-              active={activeTab === 'reports'} 
-              onClick={() => setActiveTab('reports')} 
-            /> */}
-            {/* <SidebarItem 
-              icon={<Database size={20} />} 
-              text="Templates" 
-              active={activeTab === 'templates'} 
-              onClick={() => setActiveTab('templates')} 
-            /> */}
-            <SidebarItem 
-              icon={<Code size={20} />} 
-              text="Converter" 
-              active={activeTab === 'converter'} 
-              onClick={() => setActiveTab('converter')} 
-            />
-          </div>
-            <SidebarItem 
-                icon={<HelpCircle size={20} />} 
-                text="Help & Support" 
-                active={activeTab === 'help'} 
-                onClick={() => setActiveTab('help')} 
-              />
-          
-          {/* <div className="mt-8">
-            <h6 className="text-xs font-medium text-indigo-300 uppercase tracking-wider px-3 mb-2">
-              Account
-            </h6>
-            <div className="space-y-1">
-              <SidebarItem 
-                icon={<User size={20} />} 
-                text="Profile" 
-                active={activeTab === 'profile'} 
-                onClick={() => setActiveTab('profile')} 
-              />
-              <SidebarItem 
-                icon={<Settings size={20} />} 
-                text="Settings" 
-                active={activeTab === 'settings'} 
-                onClick={() => setActiveTab('settings')} 
-              />
-            
-            </div>
-          </div> */}
-        </nav>
-      </div>
-      
-      
+      <nav className="flex-1 px-4">
+        <ul className="space-y-2">
+          <li>
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 ${
+                activeTab === 'dashboard'
+                  ? 'bg-indigo-700 text-white'
+                  : 'text-indigo-200 hover:bg-indigo-700 hover:text-white'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6a2 2 0 01-2 2H10a2 2 0 01-2-2V5z" />
+              </svg>
+              <span>Dashboard</span>
+            </button>
+          </li>
+
+          <li>
+            <button
+              onClick={() => setActiveTab('projects')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 ${
+                activeTab === 'projects'
+                  ? 'bg-indigo-700 text-white'
+                  : 'text-indigo-200 hover:bg-indigo-700 hover:text-white'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              <span>Projects</span>
+            </button>
+          </li>
+
+          <li>
+            <button
+              onClick={() => setActiveTab('converter')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 ${
+                activeTab === 'converter'
+                  ? 'bg-indigo-700 text-white'
+                  : 'text-indigo-200 hover:bg-indigo-700 hover:text-white'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              <span>Converter</span>
+            </button>
+          </li>
+
+          <li>
+            <button
+              onClick={() => setActiveTab('help')}
+              className={`w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 ${
+                activeTab === 'help'
+                  ? 'bg-indigo-700 text-white'
+                  : 'text-indigo-200 hover:bg-indigo-700 hover:text-white'
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.196V6m0 12v3.804M2.196 12H6m12 0h3.804" />
+              </svg>
+              <span>Help & Support</span>
+            </button>
+          </li>
+
+          {user && (
+            <li className="pt-4">
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-3 rounded-lg transition-colors flex items-center space-x-3 text-indigo-200 hover:bg-red-600 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sign out</span>
+              </button>
+            </li>
+          )}
+        </ul>
+      </nav>
     </div>
   );
 };

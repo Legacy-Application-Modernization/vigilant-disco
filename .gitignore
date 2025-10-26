@@ -91,3 +91,5 @@ server/prisma/migrations/dev/
 .eslintcache
 *.pem
 .turbo
+
+firebase-service-account.json
