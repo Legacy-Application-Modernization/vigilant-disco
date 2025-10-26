@@ -17,7 +17,12 @@
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
-  "keywords": ["legacy", "modernization", "mcp", "ai"],
+  "keywords": [
+    "legacy",
+    "modernization",
+    "mcp",
+    "ai"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -32,8 +37,10 @@
     "express": "^5.1.0",
     "express-async-handler": "^1.2.0",
     "express-rate-limit": "^8.1.0",
+    "firebase-admin": "^13.5.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.8.0",
+    "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
