@@ -4,6 +4,8 @@ export interface UploadedFile {
   name: string;
   size: string;
   type: string;
+   content?: string; 
+  path?: string;   
 }
 
 export interface ConversionOptions {

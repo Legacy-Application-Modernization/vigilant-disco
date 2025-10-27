@@ -18,6 +18,7 @@ import CodeAnalysis from './components/converter/CodeAnalysis';
 import CodeTransformation from './components/converter/CodeTransformation';
 import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
+import GitHubCallback from './components/GitHubCallback';
 
 // Authentication Component
 import LoginRegister from './components/auth/LoginRegister';
@@ -33,6 +34,8 @@ interface UploadedFile {
   name: string;
   size: string;
   type: string;
+  content?: string;  
+  path?: string;   
 }
 
 // Main App Content Component (wrapped by AuthProvider)
@@ -40,6 +43,9 @@ const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<Error | null>(null);
+
+  // Check if this is a GitHub callback
+  const isGitHubCallback = window.location.pathname === '/github-callback';
 
   // Original App State
   const [_mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; sessionToken: string | null }>({ 
@@ -89,6 +95,22 @@ const AppContent: React.FC = () => {
       }
     }
   }, [user]);
+
+  // Handle GitHub OAuth redirect (when popup is blocked)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const githubAuth = urlParams.get('github_auth');
+    
+    if (githubAuth === 'success' && activeTab === 'converter') {
+      console.log('GitHub OAuth redirect detected, switching to converter tab');
+      // The UploadFiles component will handle the stored code
+    }
+  }, [activeTab]);
+
+  // If this is a GitHub callback route, render the callback component
+  if (isGitHubCallback) {
+    return <GitHubCallback />;
+  }
 
   // Show loading during auth check
   if (authLoading) {
@@ -195,26 +217,9 @@ class UserController {
     }
   };
 
-  const handleFileUpload = (): void => {
-    const sampleUploadedFiles: UploadedFile[] = [
-      {
-        name: 'UserController.php',
-        size: '2.4 KB',
-        type: 'Laravel Controller'
-      },
-      {
-        name: 'DatabaseService.php',
-        size: '5.1 KB',
-        type: 'Database Class'
-      },
-      {
-        name: 'api.php',
-        size: '1.8 KB',
-        type: 'REST API Routes'
-      }
-    ];
-
-    setUploadedFiles(sampleUploadedFiles);
+  const handleFileUpload = (files: UploadedFile[]): void => {
+    console.log('Files uploaded:', files);
+    setUploadedFiles(files);
   };
 
   const analyzeCode = (): void => {
@@ -240,10 +245,11 @@ class UserController {
     });
     goToStep(2);
   };
+
   const handleNewConversion = () => {
-  // Navigate to conversion flow
-  setActiveTab("converter"); // or whatever your navigation logic is
-};
+    // Navigate to conversion flow
+    setActiveTab("converter");
+  };
 
   // Render functions
   const renderMainContent = () => {
