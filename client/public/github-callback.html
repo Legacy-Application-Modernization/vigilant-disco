@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Authorization - LegacyModernize</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .container {
+      text-align: center;
+      background: white;
+      padding: 3rem 2rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    h2 {
+      color: #333;
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem;
+    }
+
+    p {
+      color: #666;
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .success {
+      color: #10b981;
+      font-weight: 600;
+    }
+
+    .error {
+      color: #ef4444;
+      background: #fef2f2;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+
+    .github-icon {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 1rem;
+      fill: #667eea;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="github-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    <div class="spinner"></div>
+    <h2>Connecting to GitHub...</h2>
+    <p>Please wait while we complete the authentication.</p>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    (function() {
+      const statusDiv = document.getElementById('status');
+      
+      // Extract code and error from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const error = urlParams.get('error');
+      const errorDescription = urlParams.get('error_description');
+      
+      console.log('GitHub Callback - Code:', code ? 'Received' : 'Not received');
+      console.log('GitHub Callback - Error:', error || 'None');
+      
+      if (error) {
+        // Handle authorization error
+        statusDiv.innerHTML = `
+          <div class="error">
+            <strong>Authorization Failed</strong><br>
+            ${errorDescription || error}
+          </div>
+        `;
+        
+        setTimeout(() => {
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'github-oauth-error',
+              error: error,
+              description: errorDescription
+            }, window.location.origin);
+            window.close();
+          } else {
+            window.location.href = '/';
+          }
+        }, 3000);
+        
+      } else if (code) {
+        // Successfully received authorization code
+        console.log('Sending code to parent window...');
+        
+        if (window.opener) {
+          // Send code to parent window (popup flow)
+          window.opener.postMessage({
+            type: 'github-oauth-success',
+            code: code
+          }, window.location.origin);
+          
+          statusDiv.innerHTML = '<p class="success">✓ Authorization successful! Closing window...</p>';
+          
+          // Close popup after a short delay
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+          
+        } else {
+          // Redirect flow (if popup was blocked)
+          console.log('No opener window, redirecting to main app...');
+          statusDiv.innerHTML = '<p class="success">✓ Authorization successful! Redirecting...</p>';
+          
+          // Store code in localStorage temporarily
+          localStorage.setItem('github_oauth_code', code);
+          
+          // Redirect to main app
+          setTimeout(() => {
+            window.location.href = '/?github_auth=success';
+          }, 1500);
+        }
+        
+      } else {
+        // No code or error received
+        statusDiv.innerHTML = `
+          <div class="error">
+            <strong>Invalid Callback</strong><br>
+            No authorization code received from GitHub.
+          </div>
+        `;
+        
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 3000);
+      }
+    })();
+  </script>
+</body>
+</html>

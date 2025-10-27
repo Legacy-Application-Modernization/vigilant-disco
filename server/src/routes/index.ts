@@ -2,7 +2,7 @@ import { Router } from 'express';
 import userRoutes from './user.routes';
 import projectRoutes from './project.routes';
 import healthRoutes from './health.routes';
-
+import githubRoutes from './github.routes';
 const router = Router();
 
 // Health check routes (no prefix needed)
@@ -11,7 +11,7 @@ router.use('/health', healthRoutes);
 // API routes (NO /api/v1 prefix here since it's already mounted at /api/v1 in app.ts)
 router.use('/users', userRoutes);
 router.use('/projects', projectRoutes);
-
+router.use('/github', githubRoutes);
 // API info route
 router.get('/', (req, res) => {
   res.json({
@@ -22,7 +22,9 @@ router.get('/', (req, res) => {
     endpoints: {
       users: '/api/v1/users',
       projects: '/api/v1/projects',
-      health: '/health'
+      health: '/health',
+      github: '/api/v1/github'
+
     },
     features: [
       'User Management',
