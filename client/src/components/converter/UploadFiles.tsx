@@ -226,6 +226,18 @@ const UploadFiles: FC<UploadFilesProps> = ({
     
     console.log('Proceeding with repository:', selectedRepo);
     
+    // Clear any previous cached data for old repositories
+    const repoKey = `${selectedRepo.owner.login}_${selectedRepo.name}`;
+    
+    // Remove old general caches (from before repository-specific caching)
+    localStorage.removeItem('cachedAnalysisResult');
+    localStorage.removeItem('cachedConversionPlanner');
+    localStorage.removeItem('cachedTransformationData');
+    
+    // Note: We keep repository-specific caches for this repo if they exist
+    // They will be used if user navigates back and forth
+    console.log('Cache key for this repository:', repoKey);
+    
     // Store repository data in localStorage for CodeAnalysis component
     localStorage.setItem('selectedRepository', JSON.stringify({
       owner: selectedRepo.owner.login,
@@ -246,6 +258,23 @@ const UploadFiles: FC<UploadFilesProps> = ({
   const handleClearRepository = () => {
     setImportedRepo(null);
     setError(null);
+    
+    // Clear all cached data when user clears the repository
+    localStorage.removeItem('selectedRepository');
+    localStorage.removeItem('cachedAnalysisResult');
+    localStorage.removeItem('cachedConversionPlanner');
+    localStorage.removeItem('cachedTransformationData');
+    
+    // Also clear all repository-specific caches
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('cachedAnalysisResult_') || 
+          key.startsWith('cachedConversionPlanner_') || 
+          key.startsWith('cachedTransformationData_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    console.log('Cleared all cached data');
   };
 
   // Back to repository list
