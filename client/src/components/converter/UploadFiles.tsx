@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
-import { ChevronRight, ChevronDown, Github, Loader2, ExternalLink, GitBranch, File, Folder, FolderOpen, Code, Package, FileText, Star, GitFork, Scale, Search, X } from 'lucide-react';
-import type { UploadedFile } from '../../types/conversion';
+import { ChevronRight, Github, Loader2, ExternalLink, GitBranch } from 'lucide-react';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -23,57 +22,11 @@ interface Repository {
   };
 }
 
-interface FileNode {
-  path: string;
-  filetype: string;
-  size: string;
-  url: string;
-  sha: string;
-}
-
-interface AnalysisData {
-  summary: {
-    name: string;
-    full_name: string;
-    owner: string;
-    description: string;
-    html_url: string;
-    stars: number;
-    forks: number;
-    languages: string[];
-    license?: {
-      key: string;
-      name: string;
-      spdx_id: string;
-      url: string;
-      node_id: string;
-    };
-  };
-  files: FileNode[];
-  total_files: number;
-  classes_count: number;
-  functions_count: number;
-  dependencies: string[];
-  readme: string;
-}
-
 interface UploadFilesProps {
-  uploadedFiles: UploadedFile[];
-  onFileUpload: (files: UploadedFile[]) => void;
   onAnalyzeCode: () => void;
 }
 
-interface TreeNode {
-  name: string;
-  type: 'file' | 'folder';
-  children?: TreeNode[];
-  file?: FileNode;
-  path: string;
-}
-
 const UploadFiles: FC<UploadFilesProps> = ({ 
-  uploadedFiles, 
-  onFileUpload, 
   onAnalyzeCode 
 }) => {
   const [isImporting, setIsImporting] = useState(false);
@@ -86,253 +39,11 @@ const UploadFiles: FC<UploadFilesProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showRepoDetails, setShowRepoDetails] = useState(false);
   const [importedRepo, setImportedRepo] = useState<Repository | null>(null);
-  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [fileTree, setFileTree] = useState<TreeNode[]>([]);
 
-  // Reference some props/state to avoid unused variable TypeScript errors in strict configs
+  // Reference githubToken to avoid unused variable TypeScript error
   useEffect(() => {
-    // intentionally reference to avoid TS6133 unused variable errors
-    void uploadedFiles;
-    void onFileUpload;
     void githubToken;
-  }, [uploadedFiles, onFileUpload, githubToken]);
-  // Build tree structure from flat file list
-  const buildFileTree = (files: FileNode[]): TreeNode[] => {
-    const root: TreeNode[] = [];
-    
-    files.forEach(file => {
-      const parts = file.path.split('/');
-      let currentLevel = root;
-      let currentPath = '';
-      
-      parts.forEach((part, index) => {
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-        const isFile = index === parts.length - 1;
-        
-        let existing = currentLevel.find(node => node.name === part);
-        
-        if (!existing) {
-          existing = {
-            name: part,
-            type: isFile ? 'file' : 'folder',
-            path: currentPath,
-            children: isFile ? undefined : [],
-            file: isFile ? file : undefined
-          };
-          currentLevel.push(existing);
-        }
-        
-        if (!isFile && existing.children) {
-          currentLevel = existing.children;
-        }
-      });
-    });
-    
-    return root;
-  };
-
-  // Count total files in a folder recursively
-  const countFilesInFolder = (node: TreeNode): number => {
-    if (node.type === 'file') return 1;
-    if (!node.children) return 0;
-    return node.children.reduce((sum, child) => sum + countFilesInFolder(child), 0);
-  };
-
-  // Get all folder paths recursively
-  const getAllFolderPaths = (nodes: TreeNode[], paths: string[] = []): string[] => {
-    nodes.forEach(node => {
-      if (node.type === 'folder') {
-        paths.push(node.path);
-        if (node.children) {
-          getAllFolderPaths(node.children, paths);
-        }
-      }
-    });
-    return paths;
-  };
-
-  // Expand all folders
-  const expandAll = () => {
-    const allPaths = getAllFolderPaths(fileTree);
-    setExpandedFolders(new Set(allPaths));
-  };
-
-  // Collapse all folders
-  const collapseAll = () => {
-    setExpandedFolders(new Set());
-  };
-
-  // Filter tree based on search query
-  const filterTree = (nodes: TreeNode[], query: string): TreeNode[] => {
-    if (!query) return nodes;
-    
-    const lowerQuery = query.toLowerCase();
-    
-    return nodes.reduce((filtered: TreeNode[], node) => {
-      if (node.type === 'file') {
-        if (node.name.toLowerCase().includes(lowerQuery)) {
-          filtered.push(node);
-        }
-      } else if (node.children) {
-        const filteredChildren = filterTree(node.children, query);
-        if (filteredChildren.length > 0 || node.name.toLowerCase().includes(lowerQuery)) {
-          // Auto-expand folders that contain matching files
-          if (filteredChildren.length > 0) {
-            setExpandedFolders(prev => new Set([...prev, node.path]));
-          }
-          filtered.push({
-            ...node,
-            children: filteredChildren.length > 0 ? filteredChildren : node.children
-          });
-        }
-      }
-      return filtered;
-    }, []);
-  };
-
-  const toggleFolder = (path: string) => {
-    setExpandedFolders(prev => {
-      const next = new Set(prev);
-      if (next.has(path)) {
-        next.delete(path);
-      } else {
-        next.add(path);
-      }
-      return next;
-    });
-  };
-
-  const getFileIcon = (filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase();
-    
-    if (ext === 'php') return <Code size={16} className="text-purple-500" />;
-    if (ext === 'js' || ext === 'jsx' || ext === 'ts' || ext === 'tsx') return <Code size={16} className="text-yellow-500" />;
-    if (ext === 'json') return <FileText size={16} className="text-green-500" />;
-    if (ext === 'md') return <FileText size={16} className="text-blue-500" />;
-    if (ext === 'css' || ext === 'scss') return <FileText size={16} className="text-pink-500" />;
-    if (ext === 'html') return <Code size={16} className="text-orange-500" />;
-    
-    return <File size={16} className="text-gray-400" />;
-  };
-
-  const FileTreeNode: FC<{ node: TreeNode; level: number; isLast?: boolean; parentLines?: boolean[] }> = ({ 
-    node, 
-    level, 
-    isLast = false,
-    parentLines = []
-  }) => {
-    const isExpanded = expandedFolders.has(node.path);
-    const fileCount = node.type === 'folder' ? countFilesInFolder(node) : 0;
-    
-    // Build the indent with connecting lines
-    const renderIndent = () => {
-      const indents = [];
-      
-      for (let i = 0; i < level; i++) {
-        const hasLine = i < parentLines.length && parentLines[i];
-        indents.push(
-          <div key={i} className="w-5 flex-shrink-0 relative">
-            {hasLine && (
-              <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-300" />
-            )}
-          </div>
-        );
-      }
-      
-      return indents;
-    };
-    
-    if (node.type === 'folder') {
-      const sortedChildren = node.children?.sort((a, b) => {
-        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      }) || [];
-
-      return (
-        <div>
-          <div className="flex items-center group">
-            {renderIndent()}
-            
-            {/* Tree connector */}
-            {level > 0 && (
-              <div className="w-5 flex-shrink-0 relative h-6">
-                <div className="absolute left-0 top-0 w-2 h-3 border-l border-b border-gray-300 rounded-bl" />
-              </div>
-            )}
-            
-            <button
-              onClick={() => toggleFolder(node.path)}
-              className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 rounded flex-1 text-left transition-colors group-hover:bg-gray-50"
-              title={node.path}
-            >
-              {isExpanded ? (
-                <ChevronDown size={16} className="text-gray-500 flex-shrink-0" />
-              ) : (
-                <ChevronRight size={16} className="text-gray-500 flex-shrink-0" />
-              )}
-              {isExpanded ? (
-                <FolderOpen size={16} className="text-blue-500 flex-shrink-0" />
-              ) : (
-                <Folder size={16} className="text-blue-500 flex-shrink-0" />
-              )}
-              <span className="text-sm font-medium text-gray-700 flex-1 truncate">{node.name}</span>
-              <span className="text-xs text-gray-400 px-2 py-0.5 bg-gray-100 rounded-full">
-                {fileCount}
-              </span>
-            </button>
-          </div>
-          
-          {isExpanded && sortedChildren.length > 0 && (
-            <div>
-              {sortedChildren.map((child, idx) => {
-                const isChildLast = idx === sortedChildren.length - 1;
-                const newParentLines = [...parentLines, !isLast];
-                
-                return (
-                  <FileTreeNode 
-                    key={`${child.path}-${idx}`} 
-                    node={child} 
-                    level={level + 1}
-                    isLast={isChildLast}
-                    parentLines={newParentLines}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    return (
-      <div className="flex items-center group">
-        {renderIndent()}
-        
-        {/* Tree connector for files */}
-        {level > 0 && (
-          <div className="w-5 flex-shrink-0 relative h-6">
-            <div className={`absolute left-0 top-0 w-2 h-3 border-l border-b border-gray-300 ${
-              isLast ? 'rounded-bl' : ''
-            }`} />
-          </div>
-        )}
-        
-        <div 
-          className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-50 rounded flex-1 transition-colors"
-          title={node.path}
-        >
-          {getFileIcon(node.name)}
-          <span className="text-sm text-gray-600 flex-1 truncate">{node.name}</span>
-          {node.file && (
-            <span className="text-xs text-gray-400">{node.file.size}</span>
-          )}
-        </div>
-      </div>
-    );
-  };
+  }, [githubToken]);
 
   // Step 3: Fetch user's repositories
   const fetchRepositories = useCallback(async (token: string) => {
@@ -509,7 +220,7 @@ const UploadFiles: FC<UploadFilesProps> = ({
     setShowRepoDetails(true);
   };
 
-  // Step 5: Proceed with selected repository and analyze
+  // Step 5: Proceed with selected repository
   const handleProceedWithRepo = async () => {
     if (!selectedRepo) return;
     
@@ -529,86 +240,12 @@ const UploadFiles: FC<UploadFilesProps> = ({
     setShowRepoDetails(false);
     setSelectedRepo(null);
     setError(null);
-    
-    // Automatically trigger analysis
-    await handleAnalyzeRepository(selectedRepo);
-  };
-
-  // Handle analyzing repository
-  const handleAnalyzeRepository = async (repo?: Repository) => {
-    const repoToAnalyze = repo || importedRepo;
-    if (!repoToAnalyze) return;
-    
-    setIsAnalyzing(true);
-    setError(null);
-    
-    try {
-      console.log('Analyzing repository:', {
-        name: repoToAnalyze.name,
-        url: repoToAnalyze.html_url,
-        cloneUrl: repoToAnalyze.clone_url,
-        owner: repoToAnalyze.owner.login,
-        language: repoToAnalyze.language,
-      });
-      
-      // Make API call to analyze repository
-      const response = await fetch('http://127.0.0.1:8000/analyze_repository', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          owner: repoToAnalyze.owner.login,
-          repo: repoToAnalyze.name,
-          clone_url: repoToAnalyze.clone_url,
-          default_branch: repoToAnalyze.default_branch,
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Analysis response:', data);
-      
-      // Check if the response has the expected structure
-      if (!data.analysis) {
-        throw new Error('Invalid response format from server');
-      }
-      
-      // Set the analysis data from the response
-      setAnalysisData(data.analysis);
-      
-      // Build the file tree
-      const tree = buildFileTree(data.analysis.files || []);
-      setFileTree(tree);
-      
-      // Expand root folders by default
-      const rootFolders = new Set<string>();
-      tree.forEach(node => {
-        if (node.type === 'folder') {
-          rootFolders.add(node.path);
-        }
-      });
-      setExpandedFolders(rootFolders);
-      
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to analyze repository');
-    } finally {
-      setIsAnalyzing(false);
-    }
   };
 
   // Clear imported repository
   const handleClearRepository = () => {
     setImportedRepo(null);
-    setAnalysisData(null);
     setError(null);
-    setExpandedFolders(new Set());
-    setSearchQuery('');
-    setFileTree([]);
   };
 
   // Back to repository list
