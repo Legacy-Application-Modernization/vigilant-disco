@@ -45,14 +45,29 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 }) => {
   // Initialize state from localStorage if available
   const [transformationData, setTransformationData] = useState<TransformationData | null>(() => {
-    const cached = localStorage.getItem('cachedTransformationData');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached transformation data', e);
-        return null;
+    // Get current repository info
+    const storedRepo = localStorage.getItem('selectedRepository');
+    if (!storedRepo) return null;
+    
+    try {
+      const parsedRepo = JSON.parse(storedRepo);
+      const repoKey = `${parsedRepo.owner?.login || parsedRepo.owner}_${parsedRepo.name || parsedRepo.repo}`;
+      
+      // Check if we have cached data for this specific repository
+      const cacheKey = `cachedTransformationData_${repoKey}`;
+      const cached = localStorage.getItem(cacheKey);
+      
+      if (cached) {
+        try {
+          console.log('Found cached transformation data for repository:', repoKey);
+          return JSON.parse(cached);
+        } catch (e) {
+          console.error('Failed to parse cached transformation data', e);
+          return null;
+        }
       }
+    } catch (e) {
+      console.error('Failed to parse repository data', e);
     }
     return null;
   });
@@ -139,8 +154,12 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
         // Extract converted_code from the response
         const data = json.converted_code || json;
         setTransformationData(data);
-        // Cache the data in localStorage
-        localStorage.setItem('cachedTransformationData', JSON.stringify(data));
+        
+        // Cache the data in localStorage with repository-specific key
+        const repoKey = `${repoData.owner}_${repoData.repo}`;
+        const cacheKey = `cachedTransformationData_${repoKey}`;
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        console.log('Cached transformation data for repository:', repoKey);
       } catch (err: any) {
         console.error('Failed to fetch transformation data:', err);
         // Only set error if it's not an abort error
