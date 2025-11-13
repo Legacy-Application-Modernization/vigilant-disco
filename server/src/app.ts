@@ -56,7 +56,9 @@ class App {
       origin: [
         'http://localhost:5173',
         'http://localhost:3000', 
-        'http://127.0.0.1:5173'
+        'http://127.0.0.1:5173',
+        'https://vigilant-disco-client.vercel.app',
+        /\.vercel\.app$/ // Allow all Vercel preview deployments
       ],
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
