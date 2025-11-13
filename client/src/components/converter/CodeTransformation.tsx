@@ -1,5 +1,5 @@
 // components/converter/CodeTransformation.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
 import { 
   ChevronLeft, 
@@ -48,12 +48,19 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
   const [improvingFiles, setImprovingFiles] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(false);
+  const hasFetchedRef = useRef(false);
 
   // Fetch transformation data on mount
   useEffect(() => {
-    // Only fetch if we don't already have data and not currently fetching
-    if (!transformationData && !error && !isFetching) {
+    // Only fetch once using ref to prevent duplicate calls in React Strict Mode
+    if (hasFetchedRef.current) {
+      console.log('Already fetched or fetching, skipping duplicate call');
+      return;
+    }
+
+    // Only fetch if we don't already have data
+    if (!transformationData && !error) {
+      hasFetchedRef.current = true;
       fetchTransformationData();
     } else if (transformationData) {
       // If we already have data, just stop loading
@@ -62,14 +69,7 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
   }, []); // Empty dependency array - only run once on mount
 
   const fetchTransformationData = async () => {
-    // Prevent duplicate calls
-    if (isFetching) {
-      console.log('Already fetching, skipping duplicate call');
-      return;
-    }
-
     try {
-      setIsFetching(true);
       setLoading(true);
       setError(null);
 
@@ -131,7 +131,6 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       console.error('Error fetching transformation:', err);
     } finally {
       setLoading(false);
-      setIsFetching(false);
     }
   };
 
