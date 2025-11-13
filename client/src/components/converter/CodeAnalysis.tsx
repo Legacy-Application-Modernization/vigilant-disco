@@ -34,8 +34,33 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [conversionPlanner, setConversionPlanner] = useState<any>(null);
+  
+  // Initialize state from localStorage if available
+  const [analysisResult, setAnalysisResult] = useState<any>(() => {
+    const cached = localStorage.getItem('cachedAnalysisResult');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Failed to parse cached analysis result', e);
+        return null;
+      }
+    }
+    return null;
+  });
+  
+  const [conversionPlanner, setConversionPlanner] = useState<any>(() => {
+    const cached = localStorage.getItem('cachedConversionPlanner');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Failed to parse cached conversion planner', e);
+        return null;
+      }
+    }
+    return null;
+  });
 
   const loadFromServer = async () => {
     setIsAnalyzing(true);
@@ -86,7 +111,10 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
 
       const analysisJson = await analysisRes.json();
       // Extract the analysis object from the response
-      setAnalysisResult(analysisJson.analysis || analysisJson);
+      const analysisData = analysisJson.analysis || analysisJson;
+      setAnalysisResult(analysisData);
+      // Cache the data in localStorage
+      localStorage.setItem('cachedAnalysisResult', JSON.stringify(analysisData));
 
       // Step 2: Wait for analysis to complete, then call conversion_plan
       const plannerRes = await fetch('http://127.0.0.1:8000/conversion_plan', {
@@ -106,7 +134,10 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
 
       const plannerJson = await plannerRes.json();
       // Extract the conversion_plan object from the response
-      setConversionPlanner(plannerJson.conversion_plan || plannerJson);
+      const plannerData = plannerJson.conversion_plan || plannerJson;
+      setConversionPlanner(plannerData);
+      // Cache the data in localStorage
+      localStorage.setItem('cachedConversionPlanner', JSON.stringify(plannerData));
       setAnalysisComplete(true);
     } catch (err) {
       // Keep the error user-friendly; devs can inspect console for details
@@ -118,6 +149,14 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   };
 
   useEffect(() => {
+    // If we already have cached data, just stop loading
+    if (analysisResult && conversionPlanner) {
+      console.log('Using cached analysis and conversion plan data');
+      setIsAnalyzing(false);
+      setAnalysisComplete(true);
+      return;
+    }
+
     // Only load data if we don't already have it
     if (!analysisResult && !conversionPlanner && !error) {
       // tiny delay for UI feedback (similar to previous behavior)
@@ -152,10 +191,39 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     if (!conversionPlanner?.phases) return 'N/A';
     
     const totalDays = conversionPlanner.phases.reduce((sum: number, phase: any) => {
-      const days = parseInt(phase.estimated_time?.split(' ')[0]) || 0;
-      return sum + days;
+      // Extract number from strings like "2 days", "3 weeks", etc.
+      const timeStr = phase.estimated_time || '';
+      const match = timeStr.match(/(\d+)\s*(day|week|month)/i);
+      
+      if (match) {
+        const value = parseInt(match[1]);
+        const unit = match[2].toLowerCase();
+        
+        // Convert to days
+        if (unit === 'week') {
+          return sum + (value * 7);
+        } else if (unit === 'month') {
+          return sum + (value * 30);
+        } else {
+          return sum + value; // days
+        }
+      }
+      return sum;
     }, 0);
-    return `${totalDays} days`;
+    
+    // Format the output nicely
+    if (totalDays === 0) return 'N/A';
+    if (totalDays < 7) return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
+    if (totalDays < 30) {
+      const weeks = Math.floor(totalDays / 7);
+      const days = totalDays % 7;
+      if (days === 0) return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+      return `${weeks}w ${days}d`;
+    }
+    const months = Math.floor(totalDays / 30);
+    const remainingDays = totalDays % 30;
+    if (remainingDays === 0) return `${months} ${months === 1 ? 'month' : 'months'}`;
+    return `${months}m ${remainingDays}d`;
   };
 
   return (
