@@ -244,7 +244,7 @@ const LoginRegister: React.FC = () => {
             )}
 
             {/* Email */}
-            <div>
+            {/* <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email address
               </label>
@@ -264,10 +264,10 @@ const LoginRegister: React.FC = () => {
               {errors.email && (
                 <p className="mt-1 text-sm text-red-600">{errors.email}</p>
               )}
-            </div>
+            </div> */}
 
             {/* Password */}
-            <div>
+            {/* <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password
               </label>
@@ -287,10 +287,10 @@ const LoginRegister: React.FC = () => {
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600">{errors.password}</p>
               )}
-            </div>
+            </div> */}
 
             {/* Confirm Password (Register only) */}
-            {!isLogin && (
+            {/* {!isLogin && (
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Confirm Password
@@ -311,10 +311,10 @@ const LoginRegister: React.FC = () => {
                   <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
                 )}
               </div>
-            )}
+            )} */}
 
             {/* Submit Button */}
-            <button
+            {/* <button
               onClick={handleSubmit}
               disabled={loading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
@@ -330,17 +330,17 @@ const LoginRegister: React.FC = () => {
               ) : (
                 isLogin ? 'Sign in' : 'Create account'
               )}
-            </button>
+            </button> */}
 
             {/* Divider */}
-            <div className="relative">
+            {/* <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-white text-gray-500">Or continue with</span>
               </div>
-            </div>
+            </div> */}
 
             {/* Google Sign-in */}
             <button

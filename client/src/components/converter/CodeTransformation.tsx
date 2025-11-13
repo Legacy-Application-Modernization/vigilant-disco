@@ -1,335 +1,432 @@
 // components/converter/CodeTransformation.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, Edit, RefreshCw, File, Check, Save } from 'lucide-react';
-import type { ConversionOptions } from '../../types/conversion';
-import CodeEditor from './CodeEditor'; // New component we'll create
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  ChevronDown, 
+  RefreshCw, 
+  File, 
+  Download,
+  AlertCircle,
+  CheckCircle2,
+  Loader2
+} from 'lucide-react';
 
-interface ConvertedFile {
-  id: string;
-  name: string;
-  originalPath: string;
-  newPath: string;
-  originalCode: string;
-  transformedCode: string;
-  editedCode?: string; // Track edits separately
-  status: 'success' | 'warning' | 'error';
-  isEditing: boolean;
+interface ConversionResult {
+  source_file: string;
+  target_file: string;
+  source_code: string;
+  converted_code: string;
+  success: boolean;
+  error?: string;
+}
+
+interface PhaseResult {
+  phase_number: number;
+  phase_name: string;
+  files_converted: number;
+  conversion_results: ConversionResult[];
+}
+
+interface TransformationData {
+  phaseresults: PhaseResult[];
+  dependencies: string[];
 }
 
 interface CodeTransformationProps {
-  originalCode: string;
-  transformedCode: string;
-  options: ConversionOptions;
-  // Commented out since it's not used, but kept for future implementation
-  // setOptions: Dispatch<SetStateAction<ConversionOptions>>;
-  onReviewChanges: (editedFiles: ConvertedFile[]) => void;
-  mcpService?: any; // Optional MCP service for improvements
+  projectId: string;
+  onBack: () => void;
+  onNext: () => void;
 }
 
 const CodeTransformation: FC<CodeTransformationProps> = ({ 
-  originalCode,
-  transformedCode,
-  options,
-  onReviewChanges,
-  mcpService
+  projectId,
+  onBack,
+  onNext
 }) => {
-  // Convert the sample files to include editing state
-  const initialConvertedFiles: ConvertedFile[] = [
-    // Sample files from before, with added isEditing: false to each
-    {
-      id: '1',
-      name: 'UserController.php → userController.js',
-      originalPath: 'app/Http/Controllers/UserController.php',
-      newPath: 'src/controllers/userController.js',
-      originalCode,
-      transformedCode,
-      status: 'success',
-      isEditing: false
-    },
-    // ... other files
-  ];
-  
-  const [convertedFiles, setConvertedFiles] = useState<ConvertedFile[]>(initialConvertedFiles);
+  const [transformationData, setTransformationData] = useState<TransformationData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
-  const [isImproving, setIsImproving] = useState<Record<string, boolean>>({});
-  
-  const toggleFileExpansion = (fileId: string) => {
-    if (expandedFileId === fileId) {
-      setExpandedFileId(null);
-    } else {
-      setExpandedFileId(fileId);
-    }
-  };
-  
-  const toggleEditing = (fileId: string) => {
-    setConvertedFiles(files => 
-      files.map(file => 
-        file.id === fileId 
-          ? { ...file, isEditing: !file.isEditing, editedCode: file.editedCode || file.transformedCode } 
-          : file
-      )
-    );
-  };
-  
-  const saveEdits = (fileId: string, newCode: string) => {
-    setConvertedFiles(files => 
-      files.map(file => 
-        file.id === fileId 
-          ? { ...file, transformedCode: newCode, editedCode: newCode, isEditing: false } 
-          : file
-      )
-    );
-  };
-  
-  const cancelEdits = (fileId: string) => {
-    setConvertedFiles(files => 
-      files.map(file => 
-        file.id === fileId 
-          ? { ...file, isEditing: false } 
-          : file
-      )
-    );
-  };
-  
-  const improveCode = async (fileId: string) => {
-    const file = convertedFiles.find(f => f.id === fileId);
-    if (!file || !mcpService) return;
-    
+  const [improvingFiles, setImprovingFiles] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch transformation data on mount
+  useEffect(() => {
+    fetchTransformationData();
+  }, [projectId]);
+
+  const fetchTransformationData = async () => {
     try {
-      // Mark this file as improving
-      setIsImproving(prev => ({ ...prev, [fileId]: true }));
-      
-      // Request improved code from MCP service
-      const improvedCode = await mcpService.improveCode(
-        file.originalCode,
-        file.transformedCode,
-        {
-          fileName: file.name,
-          originalPath: file.originalPath,
-          newPath: file.newPath,
-          ...options // Pass transformation options
+      setLoading(true);
+      setError(null);
+
+      // Fetch transformation results from the server API only
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      try {
+        const res = await fetch('http://127.0.0.1:8000/convert_codebase', { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          throw new Error(`Server error: ${res.status} ${res.statusText} ${body}`);
         }
-      );
-      
-      // Update the file with improved code
-      setConvertedFiles(files => 
-        files.map(f => 
-          f.id === fileId 
-            ? { ...f, transformedCode: improvedCode, editedCode: improvedCode } 
-            : f
-        )
-      );
-    } catch (error) {
-      console.error('Failed to improve code:', error);
-      // Show error notification
+
+        const json = await res.json();
+        setTransformationData(json as TransformationData);
+      } catch (err) {
+        console.error('Failed to fetch transformation data:', err);
+        setError('Failed to load transformation data. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to load transformation data. Please try again.');
+      console.error('Error fetching transformation:', err);
     } finally {
-      setIsImproving(prev => ({ ...prev, [fileId]: false }));
-    }
-  };
-  
-  const revertToOriginal = (fileId: string) => {
-    // Find the file in our initial state
-    const originalFile = initialConvertedFiles.find(f => f.id === fileId);
-    if (!originalFile) return;
-    
-    // Revert to original transformation
-    setConvertedFiles(files => 
-      files.map(file => 
-        file.id === fileId 
-          ? { ...file, transformedCode: originalFile.transformedCode, editedCode: undefined, isEditing: false } 
-          : file
-      )
-    );
-  };
-  
-  const getStatusColor = (status: ConvertedFile['status']) => {
-    switch (status) {
-      case 'success': return 'text-emerald-500';
-      case 'warning': return 'text-amber-500';
-      case 'error': return 'text-red-500';
-      default: return 'text-gray-500';
+      setLoading(false);
     }
   };
 
+  const toggleFileExpansion = (fileId: string) => {
+    setExpandedFileId(expandedFileId === fileId ? null : fileId);
+  };
+
+  const improveCode = async (sourceFile: string, phaseNumber: number) => {
+    const fileId = `${phaseNumber}-${sourceFile}`;
+    
+    try {
+      setImprovingFiles(prev => new Set(prev).add(fileId));
+
+      // TODO: Replace with actual AI improvement API call
+      // const response = await fetch(`/api/improve-code`, {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ projectId, sourceFile, phaseNumber })
+      // });
+      // const improvedCode = await response.json();
+
+      // Simulate AI improvement
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Update the code with improvements (placeholder)
+      console.log('Code improved for:', sourceFile);
+      
+    } catch (error) {
+      console.error('Failed to improve code:', error);
+      alert('Failed to improve code. Please try again.');
+    } finally {
+      setImprovingFiles(prev => {
+        const next = new Set(prev);
+        next.delete(fileId);
+        return next;
+      });
+    }
+  };
+
+  const downloadFile = (fileName: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadAllFiles = () => {
+    if (!transformationData) return;
+
+    transformationData.phaseresults.forEach(phase => {
+      phase.conversion_results.forEach(result => {
+        downloadFile(result.target_file, result.converted_code);
+      });
+    });
+  };
+
+  const getTotalFiles = () => {
+    if (!transformationData) return 0;
+    return transformationData.phaseresults.reduce(
+      (sum, phase) => sum + phase.files_converted, 
+      0
+    );
+  };
+
+  const getSuccessRate = () => {
+    if (!transformationData) return 0;
+    const total = getTotalFiles();
+    if (total === 0) return 0;
+    
+    const successful = transformationData.phaseresults.reduce(
+      (sum, phase) => sum + phase.conversion_results.filter(r => r.success).length,
+      0
+    );
+    
+    return Math.round((successful / total) * 100);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mx-auto mb-4" />
+          <p className="text-gray-600">Transforming your code...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !transformationData) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-red-900 mb-2">Transformation Failed</h3>
+          <p className="text-red-700 mb-4">{error || 'Unable to load transformation data'}</p>
+          <button
+            onClick={fetchTransformationData}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold mb-6">Code Transformation</h2>
-      
       <div className="mb-8">
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Converted Files</h3>
-            <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-sm rounded-full">
-              {convertedFiles.length} files transformed
-            </span>
+        <h2 className="text-2xl font-bold mb-2">Code Transformation Complete</h2>
+        <p className="text-gray-600">Review the converted files and their transformations</p>
+      </div>
+
+      {/* Statistics Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Total Files</p>
+              <p className="text-2xl font-bold text-gray-900">{getTotalFiles()}</p>
+            </div>
+            <File className="w-8 h-8 text-indigo-500" />
           </div>
-          
-          <div className="space-y-2">
-            {convertedFiles.map((file) => (
-              <div key={file.id} className="bg-white rounded-lg shadow-sm">
-                {/* File Header */}
-                <div 
-                  className={`p-4 cursor-pointer flex items-center justify-between ${expandedFileId === file.id ? 'border-b border-gray-200' : ''}`}
-                  onClick={() => toggleFileExpansion(file.id)}
-                >
-                  <div className="flex items-center">
-                    <File size={18} className={getStatusColor(file.status)} />
-                    <span className="ml-2 font-medium">{file.name}</span>
-                    {file.editedCode && (
-                      <span className="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs rounded">
-                        Edited
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center">
-                    <Check size={16} className={getStatusColor(file.status)} />
-                    <ChevronDown 
-                      size={16} 
-                      className={`ml-2 transition-transform ${expandedFileId === file.id ? 'rotate-180' : ''}`} 
-                    />
-                  </div>
-                </div>
-                
-                {/* Expanded File Content */}
-                {expandedFileId === file.id && (
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4 mb-4 text-xs text-gray-500">
-                      <div>Original Path: <span className="font-mono">{file.originalPath}</span></div>
-                      <div>New Path: <span className="font-mono">{file.newPath}</span></div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex justify-end mb-4 space-x-2">
-                      {!file.isEditing ? (
-                        <>
-                          <button 
-                            className="px-3 py-1 text-xs bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 flex items-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleEditing(file.id);
-                            }}
-                          >
-                            <Edit size={14} className="mr-1" /> Edit Code
-                          </button>
-                          
-                          <button 
-                            className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 flex items-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              improveCode(file.id);
-                            }}
-                            disabled={isImproving[file.id]}
-                          >
-                            <RefreshCw size={14} className={`mr-1 ${isImproving[file.id] ? 'animate-spin' : ''}`} /> 
-                            {isImproving[file.id] ? 'Improving...' : 'Improve Code'}
-                          </button>
-                          
-                          {file.editedCode && (
-                            <button 
-                              className="px-3 py-1 text-xs bg-amber-50 text-amber-700 rounded hover:bg-amber-100 flex items-center"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                revertToOriginal(file.id);
-                              }}
-                            >
-                              <RefreshCw size={14} className="mr-1" /> Revert Changes
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-sm text-indigo-600">
-                          Editing Mode - Make your changes in the editor below
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Code Display or Editor */}
-                    {file.isEditing ? (
-                      <div className="mb-4">
-                        <CodeEditor 
-                          code={file.editedCode || file.transformedCode}
-                          language="javascript"
-                          onChange={(code) => {
-                            // Update the edited code while editing
-                            setConvertedFiles(files => 
-                              files.map(f => 
-                                f.id === file.id 
-                                  ? { ...f, editedCode: code } 
-                                  : f
-                              )
-                            );
-                          }}
-                        />
-                        <div className="flex justify-end mt-4 space-x-2">
-                          <button 
-                            className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              cancelEdits(file.id);
-                            }}
-                          >
-                            Cancel
-                          </button>
-                          <button 
-                            className="px-3 py-1 text-xs bg-indigo-500 text-white rounded hover:bg-indigo-600 flex items-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              saveEdits(file.id, file.editedCode || file.transformedCode);
-                            }}
-                          >
-                            <Save size={14} className="mr-1" /> Save Changes
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="rounded-lg overflow-hidden">
-                          <div className="bg-indigo-500 text-white py-2 px-4 text-sm">
-                            Original PHP Code
-                          </div>
-                          <pre className="bg-gray-900 text-gray-100 p-4 h-80 overflow-auto text-sm">
-                            {file.originalCode}
-                          </pre>
-                        </div>
-                        
-                        <div className="rounded-lg overflow-hidden">
-                          <div className="bg-indigo-500 text-white py-2 px-4 text-sm flex justify-between items-center">
-                            <span>Transformed Node.js Code</span>
-                            {file.editedCode && (
-                              <span className="text-xs bg-white text-indigo-500 px-2 py-0.5 rounded">
-                                Edited
-                              </span>
-                            )}
-                          </div>
-                          <pre className="bg-gray-900 text-gray-100 p-4 h-80 overflow-auto text-sm">
-                            {file.transformedCode}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Success Rate</p>
+              <p className="text-2xl font-bold text-emerald-600">{getSuccessRate()}%</p>
+            </div>
+            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Phases</p>
+              <p className="text-2xl font-bold text-gray-900">{transformationData.phaseresults.length}</p>
+            </div>
+            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+              {transformationData.phaseresults.length}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Dependencies</p>
+              <p className="text-2xl font-bold text-gray-900">{transformationData.dependencies.length}</p>
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              {transformationData.dependencies.slice(0, 2).join(', ')}
+              {transformationData.dependencies.length > 2 && '...'}
+            </div>
           </div>
         </div>
       </div>
-      
-      {/* Transformation Options */}
-      {/* ... (same as before) ... */}
-      
-      <div className="flex justify-between">
-        <button className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center">
-          <ChevronLeft size={18} className="mr-1" /> Back
-        </button>
-        
-        <button 
-          onClick={() => onReviewChanges(convertedFiles)}
-          className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center"
+
+      {/* Phase Results */}
+      <div className="space-y-6 mb-8">
+        {transformationData.phaseresults.map((phase) => (
+          <div key={phase.phase_number} className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Phase {phase.phase_number}: {phase.phase_name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {phase.files_converted} {phase.files_converted === 1 ? 'file' : 'files'} converted
+                  </p>
+                </div>
+                <div className="px-3 py-1 bg-indigo-100 text-indigo-800 text-sm font-medium rounded-full">
+                  {phase.conversion_results.filter(r => r.success).length}/{phase.files_converted} Success
+                </div>
+              </div>
+            </div>
+
+            <div className="divide-y divide-gray-200">
+              {phase.conversion_results.map((result, idx) => {
+                const fileId = `${phase.phase_number}-${result.source_file}`;
+                const isExpanded = expandedFileId === fileId;
+                const isImproving = improvingFiles.has(fileId);
+
+                return (
+                  <div key={idx} className="bg-white">
+                    {/* File Header */}
+                    <div
+                      className="p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleFileExpansion(fileId)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          {result.success ? (
+                            <CheckCircle2 size={20} className="text-emerald-500 flex-shrink-0" />
+                          ) : (
+                            <AlertCircle size={20} className="text-red-500 flex-shrink-0" />
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {result.source_file} → {result.target_file}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Click to {isExpanded ? 'collapse' : 'expand'} code comparison
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronDown
+                          size={20}
+                          className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div className="p-4 bg-gray-50 border-t border-gray-200">
+                        {/* Action Buttons */}
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="text-sm text-gray-600">
+                            Original: <span className="font-mono text-xs">{result.source_file}</span>
+                            <span className="mx-2">→</span>
+                            Converted: <span className="font-mono text-xs">{result.target_file}</span>
+                          </div>
+                          <div className="flex space-x-2">
+                            <button
+                              className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                improveCode(result.source_file, phase.phase_number);
+                              }}
+                              disabled={isImproving}
+                            >
+                              <RefreshCw size={14} className={`mr-1 ${isImproving ? 'animate-spin' : ''}`} />
+                              {isImproving ? 'Improving...' : 'AI Improve'}
+                            </button>
+                            <button
+                              className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 flex items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadFile(result.target_file, result.converted_code);
+                              }}
+                            >
+                              <Download size={14} className="mr-1" />
+                              Download
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Code Comparison */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {/* Original PHP Code */}
+                          <div className="rounded-lg overflow-hidden border border-gray-300">
+                            <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white py-2 px-4 text-sm font-medium">
+                              Original PHP
+                            </div>
+                            <pre className="bg-gray-900 text-gray-100 p-4 overflow-auto text-xs leading-relaxed h-96">
+                              {result.source_code}
+                            </pre>
+                          </div>
+
+                          {/* Converted Node.js Code */}
+                          <div className="rounded-lg overflow-hidden border border-gray-300">
+                            <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-2 px-4 text-sm font-medium">
+                              Converted Node.js
+                            </div>
+                            <pre className="bg-gray-900 text-gray-100 p-4 overflow-auto text-xs leading-relaxed h-96">
+                              {result.converted_code}
+                            </pre>
+                          </div>
+                        </div>
+
+                        {/* Error Display */}
+                        {!result.success && result.error && (
+                          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                            <p className="text-sm font-medium text-red-900">Conversion Error:</p>
+                            <p className="text-sm text-red-700 mt-1">{result.error}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dependencies Section */}
+      {transformationData.dependencies.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Required NPM Dependencies</h3>
+          <div className="flex flex-wrap gap-2">
+            {transformationData.dependencies.map((dep, idx) => (
+              <span
+                key={idx}
+                className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-sm font-mono rounded-full"
+              >
+                {dep}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            Run: <code className="bg-gray-100 px-2 py-1 rounded">npm install {transformationData.dependencies.join(' ')}</code>
+          </p>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+        <button
+          onClick={onBack}
+          className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
         >
-          Review Changes <ChevronRight size={18} className="ml-1" />
+          <ChevronLeft size={18} className="mr-1" /> Back to Analysis
         </button>
+
+        <div className="flex space-x-3">
+          <button
+            onClick={downloadAllFiles}
+            className="px-6 py-2 border border-indigo-500 text-indigo-500 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
+          >
+            <Download size={18} className="mr-2" />
+            Download All Files
+          </button>
+
+          <button
+            onClick={onNext}
+            className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center"
+          >
+            Review & Export <ChevronRight size={18} className="ml-1" />
+          </button>
+        </div>
       </div>
     </div>
   );
