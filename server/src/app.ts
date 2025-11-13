@@ -51,46 +51,41 @@ class App {
       crossOriginEmbedderPolicy: false
     }));
 
-    // CORS configuration
-    const corsOptions: cors.CorsOptions = {
-      origin: function (origin, callback) {
-        const allowedOrigins = [
-          'http://localhost:5173',
-          'http://localhost:3000', 
-          'http://127.0.0.1:5173',
-          'https://vigilant-disco-client.vercel.app'
-        ];
-        
-        // Allow requests with no origin (like mobile apps or curl)
+    // CORS configuration - allow specific origins
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000', 
+      'http://127.0.0.1:5173',
+      'https://vigilant-disco-client.vercel.app',
+      // Add any preview deployments here as needed
+    ];
+
+    this.app.use(cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like curl, mobile apps, or Postman)
         if (!origin) return callback(null, true);
         
-        // Check exact match
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
+        // Allow if in the allowed list
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } 
+        // Allow any Vercel preview deployment
+        else if (origin.endsWith('.vercel.app')) {
+          callback(null, true);
+        } 
+        // Reject all others
+        else {
+          callback(null, false);
         }
-        
-        // Check if it's a Vercel preview deployment
-        if (origin.endsWith('.vercel.app')) {
-          return callback(null, true);
-        }
-        
-        // Reject other origins
-        callback(null, false);
       },
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: [
-        'Content-Type', 
-        'Authorization',
-        'X-Requested-With',
-        'Accept'
-      ],
       credentials: true,
-      optionsSuccessStatus: 200
-    };
-    
-    // Enable pre-flight across all routes
-    this.app.options('*', cors(corsOptions));
-    this.app.use(cors(corsOptions));
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+      maxAge: 600, // 10 minutes
+      preflightContinue: false,
+      optionsSuccessStatus: 204
+    }));
 
     // Compression middleware
     this.app.use(compression() as unknown as express.RequestHandler);
