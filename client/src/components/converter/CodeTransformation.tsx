@@ -48,20 +48,28 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
   const [improvingFiles, setImprovingFiles] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   // Fetch transformation data on mount
   useEffect(() => {
-    // Only fetch if we don't already have data
-    if (!transformationData && !error) {
+    // Only fetch if we don't already have data and not currently fetching
+    if (!transformationData && !error && !isFetching) {
       fetchTransformationData();
-    } else {
+    } else if (transformationData) {
       // If we already have data, just stop loading
       setLoading(false);
     }
   }, []); // Empty dependency array - only run once on mount
 
   const fetchTransformationData = async () => {
+    // Prevent duplicate calls
+    if (isFetching) {
+      console.log('Already fetching, skipping duplicate call');
+      return;
+    }
+
     try {
+      setIsFetching(true);
       setLoading(true);
       setError(null);
 
@@ -123,6 +131,7 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       console.error('Error fetching transformation:', err);
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
   };
 
