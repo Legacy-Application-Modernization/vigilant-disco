@@ -29,14 +29,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user }) => {
     <div className="bg-indigo-800 w-64 min-h-screen flex flex-col">
       {/* Logo */}
       <div className="p-6">
-        <div className="flex items-center space-x-3">
-          <div className="bg-white p-2 rounded-lg">
-            <svg className="w-6 h-6 text-indigo-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-          </div>
-          <span className="text-xl font-bold text-white">LegacyModernize</span>
-        </div>
+       <div className="flex items-center space-x-3">
+  <div className="bg-white p-2 rounded-lg">
+    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+      {/* Legacy box (old/dated look) */}
+      <rect x="2" y="8" width="8" height="8" 
+            stroke="#6B7280" strokeWidth="2" 
+            fill="none" strokeDasharray="2,2"/>
+      
+      {/* Transformation arrow */}
+      <path d="M11 12h6m0 0l-2-2m2 2l-2 2" 
+            stroke="#4F46E5" strokeWidth="2" 
+            strokeLinecap="round" strokeLinejoin="round"/>
+      
+      {/* Modern shape (sleek/modern look) */}
+      <rect x="18" y="8" width="4" height="8" 
+            fill="#4F46E5" rx="1"/>
+      <rect x="14" y="10" width="3" height="4" 
+            fill="#818CF8" rx="0.5"/>
+    </svg>
+  </div>
+  <span className="text-xl font-bold text-white">LegacyModernize</span>
+</div>
       </div>
 
       {/* Navigation */}
