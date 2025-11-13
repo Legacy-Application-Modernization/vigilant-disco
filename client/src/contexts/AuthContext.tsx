@@ -54,7 +54,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const refreshUserProfile = async () => {
-    if (currentUser) {
+    const userToCheck = currentUser;
+    if (userToCheck) {
       try {
         const response = await apiService.getUserProfile();
         if (response.success) {
@@ -86,8 +87,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
 
+      // Fetch profile using the user parameter directly instead of state
       if (user) {
-        await refreshUserProfile();
+        try {
+          const response = await apiService.getUserProfile();
+          if (response.success) {
+            setUserProfile(response.data);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          // Try to initialize user if profile doesn't exist
+          try {
+            await apiService.initializeUser();
+            const retryResponse = await apiService.getUserProfile();
+            if (retryResponse.success) {
+              setUserProfile(retryResponse.data);
+            }
+          } catch (initError) {
+            console.error('Error initializing user:', initError);
+          }
+        }
       } else {
         setUserProfile(null);
       }
