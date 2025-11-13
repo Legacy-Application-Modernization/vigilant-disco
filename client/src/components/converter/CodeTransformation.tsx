@@ -43,7 +43,19 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
   onBack,
   onNext
 }) => {
-  const [transformationData, setTransformationData] = useState<TransformationData | null>(null);
+  // Initialize state from localStorage if available
+  const [transformationData, setTransformationData] = useState<TransformationData | null>(() => {
+    const cached = localStorage.getItem('cachedTransformationData');
+    if (cached) {
+      try {
+        return JSON.parse(cached);
+      } catch (e) {
+        console.error('Failed to parse cached transformation data', e);
+        return null;
+      }
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
   const [improvingFiles, setImprovingFiles] = useState<Set<string>>(new Set());
@@ -52,6 +64,13 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
   // Fetch transformation data on mount
   useEffect(() => {
+    // If we already have cached data, just stop loading
+    if (transformationData) {
+      console.log('Using cached transformation data');
+      setLoading(false);
+      return;
+    }
+
     // Only fetch once using ref to prevent duplicate calls in React Strict Mode
     if (hasFetchedRef.current) {
       console.log('Already fetched or fetching, skipping duplicate call');
@@ -62,9 +81,6 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
     if (!transformationData && !error) {
       hasFetchedRef.current = true;
       fetchTransformationData();
-    } else if (transformationData) {
-      // If we already have data, just stop loading
-      setLoading(false);
     }
 
     // Cleanup function to handle component unmount
@@ -121,7 +137,10 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
         const json = await res.json();
         // Extract converted_code from the response
-        setTransformationData(json.converted_code || json);
+        const data = json.converted_code || json;
+        setTransformationData(data);
+        // Cache the data in localStorage
+        localStorage.setItem('cachedTransformationData', JSON.stringify(data));
       } catch (err: any) {
         console.error('Failed to fetch transformation data:', err);
         // Only set error if it's not an abort error

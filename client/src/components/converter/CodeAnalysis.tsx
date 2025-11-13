@@ -159,19 +159,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   };
 
   return (
-    <div className="min-h-full">
-      {onBack && (
-        <div className="mb-6">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-        </div>
-      )}
-
+    <div className="min-h-full p-8">
       <div className="space-y-6">
         {error ? (
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
@@ -284,21 +272,33 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between gap-4">
-              <button
-                onClick={handleViewReports}
-                className="flex-1 bg-white text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors border border-gray-300 flex items-center justify-center gap-2"
-              >
-                <FileText className="w-5 h-5" />
-                View Detailed Reports
-              </button>
-              <button
-                onClick={onStartTransformation}
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-              >
-                Start Transformation
-                <ArrowLeft className="w-5 h-5 rotate-180" />
-              </button>
+            <div className="flex items-center justify-between gap-4 pt-6 border-t border-gray-200">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-1" />
+                  Back
+                </button>
+              )}
+              
+              <div className="flex items-center gap-3 ml-auto">
+                <button
+                  onClick={handleViewReports}
+                  className="px-6 py-2 border border-indigo-500 text-indigo-500 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
+                >
+                  <FileText className="w-5 h-5 mr-2" />
+                  View Detailed Reports
+                </button>
+                <button
+                  onClick={onStartTransformation}
+                  className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center"
+                >
+                  Start Transformation
+                  <ArrowLeft className="w-5 h-5 ml-1 rotate-180" />
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
