@@ -66,6 +66,11 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       // If we already have data, just stop loading
       setLoading(false);
     }
+
+    // Cleanup function to handle component unmount
+    return () => {
+      // Don't reset the ref on unmount - we want to prevent refetch on remount
+    };
   }, []); // Empty dependency array - only run once on mount
 
   const fetchTransformationData = async () => {
@@ -97,9 +102,6 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       }
 
       // Fetch transformation results from the server API
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 30000); // Increased timeout for conversion
-
       try {
         const res = await fetch('http://127.0.0.1:8000/convert_codebase', { 
           method: 'POST',
@@ -109,10 +111,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           body: JSON.stringify({
             owner: repoData.owner,
             repo: repoData.repo
-          }),
-          signal: controller.signal 
+          })
         });
-        clearTimeout(timeout);
 
         if (!res.ok) {
           const body = await res.text().catch(() => '');
@@ -122,9 +122,12 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
         const json = await res.json();
         // Extract converted_code from the response
         setTransformationData(json.converted_code || json);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch transformation data:', err);
-        setError('Failed to load transformation data. Please try again.');
+        // Only set error if it's not an abort error
+        if (err.name !== 'AbortError') {
+          setError('Failed to load transformation data. Please try again.');
+        }
       }
     } catch (err) {
       setError('Failed to load transformation data. Please try again.');
