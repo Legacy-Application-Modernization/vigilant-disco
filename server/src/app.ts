@@ -52,14 +52,30 @@ class App {
     }));
 
     // CORS configuration
-    const corsOptions = {
-      origin: [
-        'http://localhost:5173',
-        'http://localhost:3000', 
-        'http://127.0.0.1:5173',
-        'https://vigilant-disco-client.vercel.app',
-        /\.vercel\.app$/ // Allow all Vercel preview deployments
-      ],
+    const corsOptions: cors.CorsOptions = {
+      origin: function (origin, callback) {
+        const allowedOrigins = [
+          'http://localhost:5173',
+          'http://localhost:3000', 
+          'http://127.0.0.1:5173',
+          'https://vigilant-disco-client.vercel.app'
+        ];
+        
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        // Check exact match
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        
+        // Check if it's a Vercel preview deployment
+        if (origin.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+        
+        callback(new Error('Not allowed by CORS'));
+      },
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
         'Content-Type', 
@@ -71,6 +87,8 @@ class App {
       optionsSuccessStatus: 200
     };
     
+    // Enable pre-flight across all routes
+    this.app.options('*', cors(corsOptions));
     this.app.use(cors(corsOptions));
 
     // Compression middleware
