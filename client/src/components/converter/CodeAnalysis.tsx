@@ -36,19 +36,40 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     setIsAnalyzing(true);
     setError(null);
     try {
-      const [analysisRes, plannerRes] = await Promise.all([
-        fetch('http://127.0.0.1:8000/analyze_repository'),
-        fetch('http://127.0.0.1:8000/conversion_plan')
-      ]);
+      // Step 1: Call analyze_repository first
+      const analysisRes = await fetch('http://127.0.0.1:8000/analyze_repository', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // Add any required payload here if needed
+        })
+      });
 
-      if (!analysisRes.ok || !plannerRes.ok) {
-        throw new Error('Server responded with an error');
+      if (!analysisRes.ok) {
+        throw new Error('Analysis server responded with an error');
       }
 
       const analysisJson = await analysisRes.json();
-      const plannerJson = await plannerRes.json();
-
       setAnalysisResult(analysisJson);
+
+      // Step 2: Wait for analysis to complete, then call conversion_plan
+      const plannerRes = await fetch('http://127.0.0.1:8000/conversion_plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          // Add any required payload here if needed
+        })
+      });
+
+      if (!plannerRes.ok) {
+        throw new Error('Conversion plan server responded with an error');
+      }
+
+      const plannerJson = await plannerRes.json();
       setConversionPlanner(plannerJson);
       setAnalysisComplete(true);
     } catch (err) {
