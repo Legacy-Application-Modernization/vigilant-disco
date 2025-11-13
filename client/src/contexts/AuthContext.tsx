@@ -84,34 +84,44 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
 
       // Fetch profile using the user parameter directly instead of state
       if (user) {
-        try {
-          const response = await apiService.getUserProfile();
-          if (response.success) {
-            setUserProfile(response.data);
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          // Try to initialize user if profile doesn't exist
+        // Use a separate async function to avoid unhandled promise rejections in the callback
+        const fetchProfile = async () => {
           try {
-            await apiService.initializeUser();
-            const retryResponse = await apiService.getUserProfile();
-            if (retryResponse.success) {
-              setUserProfile(retryResponse.data);
+            const response = await apiService.getUserProfile();
+            if (response.success) {
+              setUserProfile(response.data);
             }
-          } catch (initError) {
-            console.error('Error initializing user:', initError);
+          } catch (error) {
+            console.error('Error fetching user profile:', error);
+            // Try to initialize user if profile doesn't exist
+            try {
+              await apiService.initializeUser();
+              const retryResponse = await apiService.getUserProfile();
+              if (retryResponse.success) {
+                setUserProfile(retryResponse.data);
+              }
+            } catch (initError) {
+              console.error('Error initializing user:', initError);
+              // Silently fail - user can still use the app with Firebase auth only
+            }
+          } finally {
+            setLoading(false);
           }
-        }
+        };
+        
+        fetchProfile().catch((err) => {
+          console.error('Uncaught error in profile fetch:', err);
+          setLoading(false);
+        });
       } else {
         setUserProfile(null);
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return unsubscribe;
