@@ -19,12 +19,17 @@ interface CodeAnalysisProps {
   onBack?: () => void;
   onStartTransformation: () => void;
   onViewReports: (data: { analysisResult: any; conversionPlanner: any }) => void;
+  repositoryData?: {
+    owner: string;
+    repo: string;
+  };
 }
 
 const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   onBack,
   onStartTransformation,
-  onViewReports
+  onViewReports,
+  repositoryData
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
@@ -35,6 +40,33 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   const loadFromServer = async () => {
     setIsAnalyzing(true);
     setError(null);
+    
+    // Get repository data from localStorage or props
+    let repoData = repositoryData;
+    
+    if (!repoData) {
+      const storedRepo = localStorage.getItem('selectedRepository');
+      if (storedRepo) {
+        try {
+          const parsedRepo = JSON.parse(storedRepo);
+          repoData = {
+            owner: parsedRepo.owner?.login || parsedRepo.owner,
+            repo: parsedRepo.name || parsedRepo.repo
+          };
+        } catch (e) {
+          console.error('Failed to parse stored repository data', e);
+        }
+      }
+    }
+    
+    // Final fallback to default values
+    if (!repoData) {
+      repoData = {
+        owner: "Legacy-Application-Modernization",
+        repo: "Blog-API-PHP"
+      };
+    }
+
     try {
       // Step 1: Call analyze_repository first
       const analysisRes = await fetch('http://127.0.0.1:8000/analyze_repository', {
@@ -43,7 +75,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Add any required payload here if needed
+          owner: repoData.owner,
+          repo: repoData.repo
         })
       });
 
@@ -61,7 +94,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Add any required payload here if needed
+          owner: repoData.owner,
+          repo: repoData.repo
         })
       });
 

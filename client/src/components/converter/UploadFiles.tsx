@@ -515,6 +515,15 @@ const UploadFiles: FC<UploadFilesProps> = ({
     
     console.log('Proceeding with repository:', selectedRepo);
     
+    // Store repository data in localStorage for CodeAnalysis component
+    localStorage.setItem('selectedRepository', JSON.stringify({
+      owner: selectedRepo.owner.login,
+      name: selectedRepo.name,
+      clone_url: selectedRepo.clone_url,
+      default_branch: selectedRepo.default_branch,
+      html_url: selectedRepo.html_url,
+    }));
+    
     setImportedRepo(selectedRepo);
     setShowRepoDialog(false);
     setShowRepoDetails(false);
