@@ -85,7 +85,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       }
 
       const analysisJson = await analysisRes.json();
-      setAnalysisResult(analysisJson);
+      // Extract the analysis object from the response
+      setAnalysisResult(analysisJson.analysis || analysisJson);
 
       // Step 2: Wait for analysis to complete, then call conversion_plan
       const plannerRes = await fetch('http://127.0.0.1:8000/conversion_plan', {
@@ -104,7 +105,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       }
 
       const plannerJson = await plannerRes.json();
-      setConversionPlanner(plannerJson);
+      // Extract the conversion_plan object from the response
+      setConversionPlanner(plannerJson.conversion_plan || plannerJson);
       setAnalysisComplete(true);
     } catch (err) {
       // Keep the error user-friendly; devs can inspect console for details
