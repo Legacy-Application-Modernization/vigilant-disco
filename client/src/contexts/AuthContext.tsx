@@ -114,6 +114,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           }
         };
         
+        // Execute the fetch and handle any uncaught errors
         fetchProfile().catch((err) => {
           console.error('Uncaught error in profile fetch:', err);
           setLoading(false);
