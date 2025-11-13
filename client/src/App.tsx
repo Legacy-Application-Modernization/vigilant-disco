@@ -24,9 +24,8 @@ import GitHubCallback from './components/GitHubCallback';
 import LoginRegister from './components/auth/LoginRegister';
 
 // Original Types and Services
-import type { AnalysisResult, ConversionOptions, FileStructure, TransformationData } from './types/conversion';
+import type { FileStructure } from './types/conversion';
 import { mcpService } from './services/mcpService';
-import { codeImprovementService } from './services/codeImprovementService';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
@@ -44,6 +43,12 @@ const AppContent: React.FC = () => {
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<Error | null>(null);
 
+  // Reports data state - for passing data between CodeAnalysis and Reports
+  const [reportsData, setReportsData] = useState<{
+    analysisResult: any;
+    conversionPlanner: any;
+  } | null>(null);
+
   // Check if this is a GitHub callback
   const isGitHubCallback = window.location.pathname === '/github-callback';
 
@@ -56,16 +61,9 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
+  // analysisResults state removed (unused) - reports use `reportsData` instead
 
-  const [transformationOptions] = useState<ConversionOptions>({
-    useAsync: true,
-    convertToTypeScript: false,
-    includeValidation: true,
-    addErrorHandling: true,
-    includeDocker: false,
-    generateUnitTests: false
-  });
+  // transformationOptions removed (unused in this flow)
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -146,45 +144,7 @@ const AppContent: React.FC = () => {
     return <LoginRegister />;
   }
 
-  // Original sample data (for converter)
-  const codeTransformation: TransformationData = {
-    originalCode: `<?php
-    
-namespace App\\Http\\Controllers;
-
-use App\\Models\\User;
-use Illuminate\\Http\\Request;
-
-class UserController extends Controller
-{
-    public function index()
-    {
-        $users = User::all();
-        return response()->json($users);
-    }
-
-    public function store(Request $request)
-    {
-`,
-    transformedCode: `const User = require('../models/User');
-const validator = require('../utils/validator');
-
-class UserController {
-    async index(req, res) {
-        try {
-            const users = await User.findAll();
-            return res.json(users);
-        } catch (error) {
-            return res.status(500).json({
-                error: error.message
-            });
-        }
-    }
-
-    async store(req, res) {
-        const errors = validator.validate(req);
-`
-  };
+  // sample codeTransformation removed (not used)
 
   const transformationSummary = {
     filesConverted: 12,
@@ -223,26 +183,7 @@ class UserController {
   };
 
   const analyzeCode = (): void => {
-    setAnalysisResults({
-      metrics: {
-        totalLinesOfCode: 1247,
-        classesDetected: 12,
-        functions: 45,
-        complexityScore: 'Low'
-      },
-      framework: {
-        name: 'Laravel 8.x',
-        designPattern: 'MVC',
-        database: 'MySQL',
-        apiType: 'RESTful'
-      },
-      dependencies: {
-        externalLibraries: 8,
-        composerPackages: 15,
-        nodejsEquivalents: 'Available',
-        migrationDifficulty: 'Medium'
-      }
-    });
+    // populate reportsData if needed; currently navigate to next step
     goToStep(2);
   };
 
@@ -273,7 +214,13 @@ class UserController {
       case 'projects':
         return <Projects onNewConversion={handleNewConversion} />;
       case 'reports':
-        return <Reports />;
+        return (
+          <Reports 
+            analysisResult={reportsData?.analysisResult}
+            conversionPlanner={reportsData?.conversionPlanner}
+            onBack={() => setActiveTab('converter')}
+          />
+        );
       case 'profile':
         return <UserProfile user={user} />;
       default:
@@ -294,20 +241,21 @@ class UserController {
       case 2:
         return (
           <CodeAnalysis
-            results={analysisResults}
+            projectId="current"
+            onBack={() => goToStep(1)}
             onStartTransformation={() => goToStep(3)}
+            onViewReports={(data) => {
+              setReportsData(data);
+              setActiveTab('reports');
+            }}
           />
         );
       case 3:
         return (
-          <CodeTransformation 
-            originalCode={codeTransformation.originalCode}
-            transformedCode={codeTransformation.transformedCode}
-            options={transformationOptions}
-            onReviewChanges={(_) => {
-              goToStep(4);
-            }}
-            mcpService={codeImprovementService}
+          <CodeTransformation
+            projectId="current"
+            onBack={() => goToStep(2)}
+            onNext={() => goToStep(4)}
           />
         );
       case 4:

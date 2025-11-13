@@ -1,5 +1,45 @@
 // Types for the conversion process
+// In client/src/types/conversion.ts
 
+export interface UploadedFile {
+  name: string;
+  size: string;
+  type: string;
+  path?: string;
+}
+
+export interface AnalysisFile {
+  path: string;
+  filetype: string;
+  size: string;
+  url: string;
+  sha: string;
+}
+
+export interface RepositorySummary {
+  name: string;
+  full_name: string;
+  owner: string;
+  description: string;
+  html_url: string;
+  stars: number;
+  forks: number;
+  languages: string[];
+  license?: {
+    name: string;
+    key: string;
+  };
+}
+
+export interface Analysis {
+  summary: RepositorySummary;
+  files: AnalysisFile[];
+  total_files: number;
+  classes_count: number;
+  functions_count: number;
+  dependencies: string[];
+  readme?: string;
+}
 export interface UploadedFile {
   name: string;
   size: string;
