@@ -10,18 +10,17 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Debug: Log config to console (remove in production)
-console.log('Firebase config:', firebaseConfig);
+// Validate that required config is present before initializing.
+// Export `app` and `auth` (may be null) so callers can handle missing config gracefully.
+let app: ReturnType<typeof initializeApp> | null = null;
+let auth: ReturnType<typeof getAuth> | null = null;
 
-// Validate that required config is present
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  console.error('Firebase configuration is missing. Please check your environment variables.');
-  console.log('Expected env vars: VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, etc.');
+  console.error('Firebase configuration is missing or invalid. Please check your VITE_FIREBASE_* environment variables.');
+} else {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize Firebase Authentication
-export const auth = getAuth(app);
+export { auth };
 export default app;

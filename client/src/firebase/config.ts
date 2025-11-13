@@ -13,9 +13,20 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
+// Initialize only when required config is present. Export nulls otherwise so callers must handle missing config.
+let app: ReturnType<typeof initializeApp> | null = null;
+let auth: ReturnType<typeof getAuth> | null = null;
+let db: ReturnType<typeof getFirestore> | null = null;
+let storage: ReturnType<typeof getStorage> | null = null;
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+} else {
+  console.error('Firebase configuration missing. Set VITE_FIREBASE_* env vars.');
+}
+
+export { auth, db, storage };
 export default app;

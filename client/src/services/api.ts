@@ -27,44 +27,27 @@ class ApiService {
     console.log('⚙️ Axios instance config:', this.api.defaults);
 
     // Add request interceptor
-    // In your API service constructor
-this.api.interceptors.request.use(
-  async (config) => {
-    
-    const user = auth.currentUser;
-    if (user) {
-      try {
-        const token = await user.getIdToken();
-        config.headers.Authorization = `Bearer ${token}`;
-        console.log('✅ Token added to request');
-      } catch (error) {
-        console.error('❌ Error getting auth token:', error);
-      }
-    } else {
-      console.log('⚠️ No authenticated user found');
-    }
-    return config;
-  }
-);
     this.api.interceptors.request.use(
       async (config) => {
         console.log('🚀 Making request to:', (config.baseURL ?? '') + config.url);
-        
-        const user = auth.currentUser;
+
+        // `auth` may be null if Firebase isn't configured. Guard usages.
+        const user = auth?.currentUser ?? null;
         if (user) {
           try {
             const token = await user.getIdToken();
-            config.headers.Authorization = `Bearer ${token}`;
+            if (!config.headers) config.headers = {} as any;
+            (config.headers as any).Authorization = `Bearer ${token}`;
           } catch (error) {
             console.error('Error getting auth token:', error);
           }
+        } else {
+          console.log('⚠️ No authenticated user found (auth not configured or user not signed in)');
         }
+
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
-      
+      (error) => Promise.reject(error)
     );
 
     // Add response interceptor
