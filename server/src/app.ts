@@ -74,7 +74,8 @@ class App {
           return callback(null, true);
         }
         
-        callback(new Error('Not allowed by CORS'));
+        // Reject other origins
+        callback(null, false);
       },
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: [
