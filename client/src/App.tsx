@@ -67,6 +67,13 @@ const AppContent: React.FC = () => {
 
   // Firebase Auth Listener
   useEffect(() => {
+    if (!auth) {
+      // Firebase not configured; skip auth listener and clear loading so app can show UI accordingly
+      setAuthLoading(false);
+      setAuthError(new Error('Firebase not configured'));
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(
       auth,
       (user) => {

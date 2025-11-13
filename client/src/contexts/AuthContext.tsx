@@ -36,6 +36,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
 
   const logout = async () => {
+    if (!auth) {
+      console.warn('Auth not configured; cannot sign out');
+      return;
+    }
+
     await signOut(auth);
     setUserProfile(null);
   };
@@ -72,15 +77,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
+    if (!auth) {
+      // Firebase not configured; mark loading false so UI can render and guard usages will handle missing auth
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-      
+
       if (user) {
         await refreshUserProfile();
       } else {
         setUserProfile(null);
       }
-      
+
       setLoading(false);
     });
 
