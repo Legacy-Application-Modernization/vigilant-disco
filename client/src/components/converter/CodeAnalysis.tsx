@@ -118,12 +118,21 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   };
 
   useEffect(() => {
-    // tiny delay for UI feedback (similar to previous behavior)
-    const t = setTimeout(() => {
-      void loadFromServer();
-    }, 500);
+    // Only load data if we don't already have it
+    if (!analysisResult && !conversionPlanner && !error) {
+      // tiny delay for UI feedback (similar to previous behavior)
+      const t = setTimeout(() => {
+        void loadFromServer();
+      }, 500);
 
-    return () => clearTimeout(t);
+      return () => clearTimeout(t);
+    } else {
+      // If we already have data, mark as complete
+      setIsAnalyzing(false);
+      if (analysisResult && conversionPlanner) {
+        setAnalysisComplete(true);
+      }
+    }
   }, []);
 
   const handleViewReports = () => {
