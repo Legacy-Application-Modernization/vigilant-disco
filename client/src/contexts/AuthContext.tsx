@@ -86,11 +86,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      setLoading(false);
 
-      // Fetch profile using the user parameter directly instead of state
+      // Fetch profile in a separate effect-like async function
       if (user) {
-        // Use a separate async function to avoid unhandled promise rejections in the callback
-        const fetchProfile = async () => {
+        // Don't await this - let it run independently
+        (async () => {
           try {
             const response = await apiService.getUserProfile();
             if (response.success) {
@@ -109,19 +110,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               console.error('Error initializing user:', initError);
               // Silently fail - user can still use the app with Firebase auth only
             }
-          } finally {
-            setLoading(false);
           }
-        };
-        
-        // Execute the fetch and handle any uncaught errors
-        fetchProfile().catch((err) => {
-          console.error('Uncaught error in profile fetch:', err);
-          setLoading(false);
-        });
+        })();
       } else {
         setUserProfile(null);
-        setLoading(false);
       }
     });
 
