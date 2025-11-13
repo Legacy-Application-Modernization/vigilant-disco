@@ -29,14 +29,6 @@ import { mcpService } from './services/mcpService';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
-interface UploadedFile {
-  name: string;
-  size: string;
-  type: string;
-  content?: string;  
-  path?: string;   
-}
-
 // Main App Content Component (wrapped by AuthProvider)
 const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -60,7 +52,6 @@ const AppContent: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   // analysisResults state removed (unused) - reports use `reportsData` instead
 
   // transformationOptions removed (unused in this flow)
@@ -184,11 +175,6 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (files: UploadedFile[]): void => {
-    console.log('Files uploaded:', files);
-    setUploadedFiles(files);
-  };
-
   const analyzeCode = (): void => {
     // populate reportsData if needed; currently navigate to next step
     goToStep(2);
@@ -240,8 +226,6 @@ const AppContent: React.FC = () => {
       case 1:
         return (
           <UploadFiles
-            uploadedFiles={uploadedFiles}
-            onFileUpload={handleFileUpload}
             onAnalyzeCode={analyzeCode}
           />
         );
@@ -260,7 +244,6 @@ const AppContent: React.FC = () => {
       case 3:
         return (
           <CodeTransformation
-            projectId="current"
             onBack={() => goToStep(2)}
             onNext={() => goToStep(4)}
           />
@@ -281,8 +264,6 @@ const AppContent: React.FC = () => {
       default:
         return (
           <UploadFiles
-            uploadedFiles={uploadedFiles}
-            onFileUpload={handleFileUpload}
             onAnalyzeCode={analyzeCode}
           />
         );
