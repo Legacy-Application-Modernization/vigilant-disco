@@ -14,6 +14,11 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user }) => {
   const handleLogout = async (): Promise<void> => {
     try {
+      if (!auth) {
+        console.warn('Auth not configured; cannot sign out');
+        return;
+      }
+
       await signOut(auth);
     } catch (error) {
       console.error('Logout error:', error);

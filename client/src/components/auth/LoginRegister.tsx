@@ -89,6 +89,11 @@ const LoginRegister: React.FC = () => {
     setErrors({});
 
     try {
+      if (!auth) {
+        setErrors({ submit: 'Authentication is not configured. Please set VITE_FIREBASE_* environment variables.' });
+        setLoading(false);
+        return;
+      }
       if (isLogin) {
         // Login - Firebase Auth only
         await signInWithEmailAndPassword(auth, formData.email, formData.password);
@@ -139,6 +144,11 @@ const LoginRegister: React.FC = () => {
     setErrors({});
 
     try {
+      if (!auth) {
+        setErrors({ submit: 'Authentication is not configured. Please set VITE_FIREBASE_* environment variables.' });
+        setLoading(false);
+        return;
+      }
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');

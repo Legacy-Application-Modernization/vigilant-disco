@@ -52,6 +52,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ user }) => {
   // Load user stats from Firestore
   useEffect(() => {
     const loadUserStats = async () => {
+      if (!db) {
+        console.warn('Firestore not configured; skipping user stats load');
+        setStatsLoading(false);
+        return;
+      }
+
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
@@ -89,6 +95,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ user }) => {
     setMessage({ type: '', text: '' });
 
     try {
+      if (!auth || !db) {
+        setMessage({ type: 'error', text: 'Authentication or Firestore not configured.' });
+        return;
+      }
+
       // Update Firebase Auth profile
       await updateProfile(auth.currentUser!, {
         displayName: formData.displayName
@@ -126,6 +137,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ user }) => {
     setMessage({ type: '', text: '' });
 
     try {
+      if (!auth) {
+        setMessage({ type: 'error', text: 'Authentication not configured.' });
+        return;
+      }
+
       await updatePassword(auth.currentUser!, formData.newPassword);
       setMessage({ type: 'success', text: 'Password updated successfully!' });
       setFormData(prev => ({
