@@ -61,12 +61,45 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       setLoading(true);
       setError(null);
 
-      // Fetch transformation results from the server API only
+      // Get repository data from localStorage
+      let repoData = null;
+      const storedRepo = localStorage.getItem('selectedRepository');
+      if (storedRepo) {
+        try {
+          const parsedRepo = JSON.parse(storedRepo);
+          repoData = {
+            owner: parsedRepo.owner?.login || parsedRepo.owner,
+            repo: parsedRepo.name || parsedRepo.repo
+          };
+        } catch (e) {
+          console.error('Failed to parse stored repository data', e);
+        }
+      }
+
+      // Fallback to default values if no repo data found
+      if (!repoData) {
+        repoData = {
+          owner: "Legacy-Application-Modernization",
+          repo: "Blog-API-PHP"
+        };
+      }
+
+      // Fetch transformation results from the server API
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000);
+      const timeout = setTimeout(() => controller.abort(), 30000); // Increased timeout for conversion
 
       try {
-        const res = await fetch('http://127.0.0.1:8000/convert_codebase', { signal: controller.signal });
+        const res = await fetch('http://127.0.0.1:8000/convert_codebase', { 
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            owner: repoData.owner,
+            repo: repoData.repo
+          }),
+          signal: controller.signal 
+        });
         clearTimeout(timeout);
 
         if (!res.ok) {
@@ -75,7 +108,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
         }
 
         const json = await res.json();
-        setTransformationData(json as TransformationData);
+        // Extract converted_code from the response
+        setTransformationData(json.converted_code || json);
       } catch (err) {
         console.error('Failed to fetch transformation data:', err);
         setError('Failed to load transformation data. Please try again.');
