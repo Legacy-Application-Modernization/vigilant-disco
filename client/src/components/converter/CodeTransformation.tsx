@@ -35,13 +35,11 @@ interface TransformationData {
 }
 
 interface CodeTransformationProps {
-  projectId: string;
   onBack: () => void;
   onNext: () => void;
 }
 
 const CodeTransformation: FC<CodeTransformationProps> = ({ 
-  projectId,
   onBack,
   onNext
 }) => {
@@ -53,8 +51,14 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
   // Fetch transformation data on mount
   useEffect(() => {
-    fetchTransformationData();
-  }, [projectId]);
+    // Only fetch if we don't already have data
+    if (!transformationData && !error) {
+      fetchTransformationData();
+    } else {
+      // If we already have data, just stop loading
+      setLoading(false);
+    }
+  }, []); // Empty dependency array - only run once on mount
 
   const fetchTransformationData = async () => {
     try {
