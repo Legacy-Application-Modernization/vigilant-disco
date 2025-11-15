@@ -19,6 +19,7 @@ import CodeTransformation from './components/converter/CodeTransformation';
 import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
 import GitHubCallback from './components/GitHubCallback';
+import ProjectLimitDialog from './components/common/ProjectLimitDialog';
 
 // Authentication Component
 import LoginRegister from './components/auth/LoginRegister';
@@ -26,6 +27,7 @@ import LoginRegister from './components/auth/LoginRegister';
 // Original Types and Services
 import type { FileStructure } from './types/conversion';
 import { mcpService } from './services/mcpService';
+import apiService from './services/api';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
@@ -55,6 +57,10 @@ const AppContent: React.FC = () => {
   // analysisResults state removed (unused) - reports use `reportsData` instead
 
   // transformationOptions removed (unused in this flow)
+
+  // Project limit dialog state
+  const [showProjectLimitDialog, setShowProjectLimitDialog] = useState<boolean>(false);
+  const [projectLimitInfo, setProjectLimitInfo] = useState<{ currentCount: number; maxAllowed: number } | null>(null);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -180,9 +186,27 @@ const AppContent: React.FC = () => {
     goToStep(2);
   };
 
-  const handleNewConversion = () => {
-    // Navigate to conversion flow
-    setActiveTab("converter");
+  const handleNewConversion = async () => {
+    try {
+      // Check if user can create a new project
+      const response = await apiService.checkCanCreateProject();
+
+      if (response.success && response.data.canCreate) {
+        // User can create project, navigate to converter
+        setActiveTab("converter");
+      } else {
+        // User has reached limit, show dialog
+        setProjectLimitInfo({
+          currentCount: response.data.currentCount || 0,
+          maxAllowed: response.data.maxAllowed || 2
+        });
+        setShowProjectLimitDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking project limits:', error);
+      // On error, allow navigation but log the issue
+      setActiveTab("converter");
+    }
   };
 
   // Render functions
@@ -203,12 +227,12 @@ const AppContent: React.FC = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNewConversion={() => setActiveTab('converter')} />;
+        return <Dashboard onNewConversion={handleNewConversion} />;
       case 'projects':
         return <Projects onNewConversion={handleNewConversion} />;
       case 'reports':
         return (
-          <Reports 
+          <Reports
             analysisResult={reportsData?.analysisResult}
             conversionPlanner={reportsData?.conversionPlanner}
             onBack={() => setActiveTab('converter')}
@@ -217,7 +241,7 @@ const AppContent: React.FC = () => {
       case 'profile':
         return <UserProfile user={user} />;
       default:
-        return <Dashboard onNewConversion={() => setActiveTab('converter')}/>;
+        return <Dashboard onNewConversion={handleNewConversion}/>;
     }
   };
 
@@ -272,8 +296,8 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar 
-        activeTab={activeTab} 
+      <Sidebar
+        activeTab={activeTab}
         setActiveTab={(tab) => setActiveTab(tab)}
         user={user}
       />
@@ -284,6 +308,16 @@ const AppContent: React.FC = () => {
           {renderMainContent()}
         </main>
       </div>
+
+      {/* Project Limit Dialog */}
+      {projectLimitInfo && (
+        <ProjectLimitDialog
+          isOpen={showProjectLimitDialog}
+          onClose={() => setShowProjectLimitDialog(false)}
+          currentCount={projectLimitInfo.currentCount}
+          maxAllowed={projectLimitInfo.maxAllowed}
+        />
+      )}
     </div>
   );
 };
