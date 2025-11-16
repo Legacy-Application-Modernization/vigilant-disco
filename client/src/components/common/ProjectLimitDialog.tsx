@@ -17,8 +17,14 @@ const ProjectLimitDialog: React.FC<ProjectLimitDialogProps> = ({
   if (!isOpen) return null;
 
   const handleContactSupport = () => {
-    // Open email client with pre-filled subject
-    window.location.href = 'mailto:support@example.com?subject=Request%20for%20Additional%20Project%20Access&body=Hello,%0D%0A%0D%0AI%20would%20like%20to%20request%20additional%20project%20access.%20I%20currently%20have%20' + currentCount + '%20projects%20and%20would%20like%20to%20increase%20my%20limit.%0D%0A%0D%0AThank%20you.';
+    // Get support email from environment variable or use fallback
+    const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'support@legacymodernization.com';
+
+    // Open email client with pre-filled subject and body
+    const subject = 'Request for Additional Project Access';
+    const body = `Hello,\n\nI would like to request additional project access. I currently have ${currentCount} projects and would like to increase my limit.\n\nThank you.`;
+
+    window.location.href = `mailto:${supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
