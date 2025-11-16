@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, 
-  FileCode, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  FileCode,
+  CheckCircle2,
   Loader2,
   FileText,
   AlertCircle
 } from 'lucide-react';
+import { storage, cacheStorage } from '../../utils/localStorage';
+import { STORAGE_KEYS, getRepoKey } from '../../constants/storageKeys';
 
 // Update import paths as needed. If you use CRA/Vite, place JSON in src/
 // Data now fetched from backend endpoints instead of local JSON files
@@ -34,56 +36,33 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Initialize state from localStorage if available
+
+  // Initialize state from localStorage using new storage utility
   const [analysisResult, setAnalysisResult] = useState<any>(() => {
-    const cached = localStorage.getItem('cachedAnalysisResult');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached analysis result', e);
-        return null;
-      }
-    }
-    return null;
+    return cacheStorage.getCache(STORAGE_KEYS.CACHE.ANALYSIS_RESULT);
   });
-  
+
   const [conversionPlanner, setConversionPlanner] = useState<any>(() => {
-    const cached = localStorage.getItem('cachedConversionPlanner');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached conversion planner', e);
-        return null;
-      }
-    }
-    return null;
+    return cacheStorage.getCache(STORAGE_KEYS.CACHE.CONVERSION_PLANNER);
   });
 
   const loadFromServer = async () => {
     setIsAnalyzing(true);
     setError(null);
-    
+
     // Get repository data from localStorage or props
     let repoData = repositoryData;
-    
+
     if (!repoData) {
-      const storedRepo = localStorage.getItem('selectedRepository');
+      const storedRepo = storage.getItem<any>(STORAGE_KEYS.REPOSITORY.SELECTED);
       if (storedRepo) {
-        try {
-          const parsedRepo = JSON.parse(storedRepo);
-          repoData = {
-            owner: parsedRepo.owner?.login || parsedRepo.owner,
-            repo: parsedRepo.name || parsedRepo.repo
-          };
-        } catch (e) {
-          console.error('Failed to parse stored repository data', e);
-        }
+        repoData = {
+          owner: storedRepo.owner?.login || storedRepo.owner,
+          repo: storedRepo.name || storedRepo.repo
+        };
       }
     }
-    
+
     // Final fallback to default values
     if (!repoData) {
       repoData = {
@@ -113,8 +92,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       // Extract the analysis object from the response
       const analysisData = analysisJson.analysis || analysisJson;
       setAnalysisResult(analysisData);
-      // Cache the data in localStorage
-      localStorage.setItem('cachedAnalysisResult', JSON.stringify(analysisData));
+      // Cache the data with 1 hour TTL
+      cacheStorage.setCache(STORAGE_KEYS.CACHE.ANALYSIS_RESULT, analysisData);
 
       // Step 2: Wait for analysis to complete, then call conversion_plan
       const plannerRes = await fetch('http://127.0.0.1:8000/conversion_plan', {
@@ -136,8 +115,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       // Extract the conversion_plan object from the response
       const plannerData = plannerJson.conversion_plan || plannerJson;
       setConversionPlanner(plannerData);
-      // Cache the data in localStorage
-      localStorage.setItem('cachedConversionPlanner', JSON.stringify(plannerData));
+      // Cache the data with 1 hour TTL
+      cacheStorage.setCache(STORAGE_KEYS.CACHE.CONVERSION_PLANNER, plannerData);
       setAnalysisComplete(true);
     } catch (err) {
       // Keep the error user-friendly; devs can inspect console for details

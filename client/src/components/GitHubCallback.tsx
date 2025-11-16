@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { storage } from '../utils/localStorage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const GitHubCallback = () => {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -41,8 +43,8 @@ const GitHubCallback = () => {
         } else {
           // Store code and redirect to main app
           console.log('No opener window, storing code and redirecting...');
-          localStorage.setItem('github_oauth_code', code);
-          
+          storage.setItem(STORAGE_KEYS.OAUTH.GITHUB_CODE, code);
+
           setTimeout(() => {
             window.location.href = '/?github_auth=success';
           }, 1500);

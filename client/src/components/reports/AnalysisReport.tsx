@@ -3,6 +3,8 @@ import type { FC } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import AnalysisDashboard from './AnalysisDashboard';
 import type { AnalysisData } from '../../types/analysis.types';
+import { tokenStorage } from '../../utils/localStorage';
+import { STORAGE_KEYS } from '../../constants/storageKeys';
 // Uncomment this for testing with sample data:
 import { sampleAnalysisData } from '../../data/sampleAnalysisData';
 
@@ -26,7 +28,7 @@ const AnalysisReport: FC = () => {
           `${import.meta.env.VITE_API_URL}/api/analysis/latest`,
           {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Authorization': `Bearer ${tokenStorage.getToken(STORAGE_KEYS.AUTH.AUTH_TOKEN)}`,
               'Content-Type': 'application/json',
             },
           }

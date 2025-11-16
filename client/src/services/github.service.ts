@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { tokenStorage } from '../utils/localStorage';
+import { STORAGE_KEYS } from '../constants/storageKeys';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
@@ -24,19 +26,19 @@ class GitHubService {
 
   setToken(token: string) {
     this.token = token;
-    localStorage.setItem('github_token', token);
+    tokenStorage.setToken(STORAGE_KEYS.AUTH.GITHUB_TOKEN, token);
   }
 
   getToken(): string | null {
     if (!this.token) {
-      this.token = localStorage.getItem('github_token');
+      this.token = tokenStorage.getToken(STORAGE_KEYS.AUTH.GITHUB_TOKEN);
     }
     return this.token;
   }
 
   clearToken() {
     this.token = null;
-    localStorage.removeItem('github_token');
+    tokenStorage.removeToken(STORAGE_KEYS.AUTH.GITHUB_TOKEN);
   }
 
   async getAuthUrl(): Promise<string> {

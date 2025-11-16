@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import { ChevronRight, Github, Loader2, ExternalLink, GitBranch } from 'lucide-react';
+import { storage, tokenStorage, cacheStorage } from '../../utils/localStorage';
+import { STORAGE_KEYS, STORAGE_PREFIXES, getRepoKey } from '../../constants/storageKeys';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -34,7 +36,7 @@ const UploadFiles: FC<UploadFilesProps> = ({
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null);
   const [githubToken, setGithubToken] = useState<string | null>(
-    localStorage.getItem('github_token')
+    tokenStorage.getToken(STORAGE_KEYS.AUTH.GITHUB_TOKEN)
   );
   const [error, setError] = useState<string | null>(null);
   const [showRepoDetails, setShowRepoDetails] = useState(false);
@@ -104,8 +106,8 @@ const UploadFiles: FC<UploadFilesProps> = ({
       
       const { accessToken } = data;
       setGithubToken(accessToken);
-      localStorage.setItem('github_token', accessToken);
-      
+      tokenStorage.setToken(STORAGE_KEYS.AUTH.GITHUB_TOKEN, accessToken);
+
       await fetchRepositories(accessToken);
       setShowRepoDialog(true);
       
@@ -121,15 +123,15 @@ const UploadFiles: FC<UploadFilesProps> = ({
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const githubAuth = urlParams.get('github_auth');
-    const storedCode = localStorage.getItem('github_oauth_code');
-    
+    const storedCode = storage.getItem<string>(STORAGE_KEYS.OAUTH.GITHUB_CODE);
+
     if (githubAuth === 'success' && storedCode) {
       console.log('Handling OAuth redirect with code from localStorage');
       setIsImporting(true);
-      
-      localStorage.removeItem('github_oauth_code');
+
+      storage.removeItem(STORAGE_KEYS.OAUTH.GITHUB_CODE);
       handleOAuthCallback(storedCode);
-      
+
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -223,30 +225,30 @@ const UploadFiles: FC<UploadFilesProps> = ({
   // Step 5: Proceed with selected repository
   const handleProceedWithRepo = async () => {
     if (!selectedRepo) return;
-    
+
     console.log('Proceeding with repository:', selectedRepo);
-    
+
     // Clear any previous cached data for old repositories
-    const repoKey = `${selectedRepo.owner.login}_${selectedRepo.name}`;
-    
+    const repoKeyValue = getRepoKey(selectedRepo.owner.login, selectedRepo.name);
+
     // Remove old general caches (from before repository-specific caching)
-    localStorage.removeItem('cachedAnalysisResult');
-    localStorage.removeItem('cachedConversionPlanner');
-    localStorage.removeItem('cachedTransformationData');
-    
+    cacheStorage.removeCache(STORAGE_KEYS.CACHE.ANALYSIS_RESULT);
+    cacheStorage.removeCache(STORAGE_KEYS.CACHE.CONVERSION_PLANNER);
+    cacheStorage.removeCache(STORAGE_KEYS.CACHE.TRANSFORMATION_DATA);
+
     // Note: We keep repository-specific caches for this repo if they exist
     // They will be used if user navigates back and forth
-    console.log('Cache key for this repository:', repoKey);
-    
+    console.log('Cache key for this repository:', repoKeyValue);
+
     // Store repository data in localStorage for CodeAnalysis component
-    localStorage.setItem('selectedRepository', JSON.stringify({
+    storage.setItem(STORAGE_KEYS.REPOSITORY.SELECTED, {
       owner: selectedRepo.owner.login,
       name: selectedRepo.name,
       clone_url: selectedRepo.clone_url,
       default_branch: selectedRepo.default_branch,
       html_url: selectedRepo.html_url,
-    }));
-    
+    });
+
     setImportedRepo(selectedRepo);
     setShowRepoDialog(false);
     setShowRepoDetails(false);
@@ -258,22 +260,18 @@ const UploadFiles: FC<UploadFilesProps> = ({
   const handleClearRepository = () => {
     setImportedRepo(null);
     setError(null);
-    
+
     // Clear all cached data when user clears the repository
-    localStorage.removeItem('selectedRepository');
-    localStorage.removeItem('cachedAnalysisResult');
-    localStorage.removeItem('cachedConversionPlanner');
-    localStorage.removeItem('cachedTransformationData');
-    
+    storage.removeItem(STORAGE_KEYS.REPOSITORY.SELECTED);
+    cacheStorage.removeCache(STORAGE_KEYS.CACHE.ANALYSIS_RESULT);
+    cacheStorage.removeCache(STORAGE_KEYS.CACHE.CONVERSION_PLANNER);
+    cacheStorage.removeCache(STORAGE_KEYS.CACHE.TRANSFORMATION_DATA);
+
     // Also clear all repository-specific caches
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('cachedAnalysisResult_') || 
-          key.startsWith('cachedConversionPlanner_') || 
-          key.startsWith('cachedTransformationData_')) {
-        localStorage.removeItem(key);
-      }
-    });
-    
+    storage.removeByPrefix(STORAGE_PREFIXES.CACHE_ANALYSIS);
+    storage.removeByPrefix(STORAGE_PREFIXES.CACHE_CONVERSION);
+    storage.removeByPrefix(STORAGE_PREFIXES.CACHE_TRANSFORMATION);
+
     console.log('Cleared all cached data');
   };
 

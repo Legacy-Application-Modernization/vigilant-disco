@@ -1,17 +1,19 @@
 // components/converter/CodeTransformation.tsx
 import { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronDown, 
-  RefreshCw, 
-  File, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  RefreshCw,
+  File,
   Download,
   AlertCircle,
   CheckCircle2,
   Loader2
 } from 'lucide-react';
+import { storage, cacheStorage } from '../../utils/localStorage';
+import { STORAGE_KEYS, getRepoKey } from '../../constants/storageKeys';
 
 interface ConversionResult {
   source_file: string;
@@ -39,37 +41,29 @@ interface CodeTransformationProps {
   onNext: () => void;
 }
 
-const CodeTransformation: FC<CodeTransformationProps> = ({ 
+const CodeTransformation: FC<CodeTransformationProps> = ({
   onBack,
   onNext
 }) => {
   // Initialize state from localStorage if available
   const [transformationData, setTransformationData] = useState<TransformationData | null>(() => {
     // Get current repository info
-    const storedRepo = localStorage.getItem('selectedRepository');
+    const storedRepo = storage.getItem<any>(STORAGE_KEYS.REPOSITORY.SELECTED);
     if (!storedRepo) return null;
-    
-    try {
-      const parsedRepo = JSON.parse(storedRepo);
-      const repoKey = `${parsedRepo.owner?.login || parsedRepo.owner}_${parsedRepo.name || parsedRepo.repo}`;
-      
-      // Check if we have cached data for this specific repository
-      const cacheKey = `cachedTransformationData_${repoKey}`;
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached) {
-        try {
-          console.log('Found cached transformation data for repository:', repoKey);
-          return JSON.parse(cached);
-        } catch (e) {
-          console.error('Failed to parse cached transformation data', e);
-          return null;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse repository data', e);
+
+    const owner = storedRepo.owner?.login || storedRepo.owner;
+    const repo = storedRepo.name || storedRepo.repo;
+    const repoKeyValue = getRepoKey(owner, repo);
+
+    // Check if we have cached data for this specific repository
+    const cacheKey = STORAGE_KEYS.CACHE.getTransformationKey(repoKeyValue);
+    const cached = storage.getItem<TransformationData>(cacheKey);
+
+    if (cached) {
+      console.log('Found cached transformation data for repository:', repoKeyValue);
     }
-    return null;
+
+    return cached;
   });
   const [loading, setLoading] = useState(true);
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
@@ -111,17 +105,12 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
       // Get repository data from localStorage
       let repoData = null;
-      const storedRepo = localStorage.getItem('selectedRepository');
+      const storedRepo = storage.getItem<any>(STORAGE_KEYS.REPOSITORY.SELECTED);
       if (storedRepo) {
-        try {
-          const parsedRepo = JSON.parse(storedRepo);
-          repoData = {
-            owner: parsedRepo.owner?.login || parsedRepo.owner,
-            repo: parsedRepo.name || parsedRepo.repo
-          };
-        } catch (e) {
-          console.error('Failed to parse stored repository data', e);
-        }
+        repoData = {
+          owner: storedRepo.owner?.login || storedRepo.owner,
+          repo: storedRepo.name || storedRepo.repo
+        };
       }
 
       // Fallback to default values if no repo data found
@@ -134,7 +123,7 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
       // Fetch transformation results from the server API
       try {
-        const res = await fetch('http://127.0.0.1:8000/convert_codebase', { 
+        const res = await fetch('http://127.0.0.1:8000/convert_codebase', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -154,12 +143,12 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
         // Extract converted_code from the response
         const data = json.converted_code || json;
         setTransformationData(data);
-        
-        // Cache the data in localStorage with repository-specific key
-        const repoKey = `${repoData.owner}_${repoData.repo}`;
-        const cacheKey = `cachedTransformationData_${repoKey}`;
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-        console.log('Cached transformation data for repository:', repoKey);
+
+        // Cache the data with repository-specific key and 1 hour TTL
+        const repoKeyValue = getRepoKey(repoData.owner, repoData.repo);
+        const cacheKey = STORAGE_KEYS.CACHE.getTransformationKey(repoKeyValue);
+        cacheStorage.setCache(cacheKey, data);
+        console.log('Cached transformation data for repository:', repoKeyValue);
       } catch (err: any) {
         console.error('Failed to fetch transformation data:', err);
         // Only set error if it's not an abort error
