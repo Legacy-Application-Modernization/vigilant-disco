@@ -61,6 +61,12 @@ class ProjectService {
   }
 
   async createProject(userId: string, projectData: CreateProjectData): Promise<Project> {
+    // Check if user can create a new project
+    const limitCheck = await this.userService.canCreateProject(userId);
+    if (!limitCheck.canCreate) {
+      throw new Error(limitCheck.reason || 'Cannot create project');
+    }
+
     const now = new Date();
     const projectId = this.getFirestore().collection(this.projectsCollection).doc().id;
 

@@ -1,11 +1,13 @@
 // Types for user related data
 
+export type UserRole = 'admin' | 'manager' | 'user';
+
 export interface User {
   id: number;
   name: string;
   email: string;
   avatar: string;
-  role: string;
+  role: UserRole;
   plan: 'Free' | 'Pro' | 'Enterprise';
   joinDate: string;
   company?: string;
@@ -14,6 +16,19 @@ export interface User {
   bio?: string;
   projects: number;
   conversions: number;
+}
+
+export interface ProjectLimitInfo {
+  currentCount: number;
+  maxAllowed: number | null; // null means unlimited for admin/manager
+  role: UserRole;
+}
+
+export interface CanCreateProjectResponse {
+  canCreate: boolean;
+  reason?: string;
+  currentCount?: number;
+  maxAllowed?: number;
 }
 
 export interface ApiKey {

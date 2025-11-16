@@ -94,6 +94,14 @@ class ApiService {
     return this.request('GET', '/api/v1/users/stats');
   }
 
+  async getProjectLimits(): Promise<any> {
+    return this.request('GET', '/api/v1/users/project-limits');
+  }
+
+  async checkCanCreateProject(): Promise<any> {
+    return this.request('GET', '/api/v1/users/can-create-project');
+  }
+
   async createProject(projectData: any): Promise<any> {
     return this.request('POST', '/api/v1/projects', projectData);
   }

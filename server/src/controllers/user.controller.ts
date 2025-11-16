@@ -196,7 +196,7 @@ class UserController {
   async getUserStats(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.uid;
-      
+
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -208,7 +208,7 @@ class UserController {
 
       const userService = this.getUserService();
       const userProfile = await userService.getUserProfile(userId);
-      
+
       if (!userProfile) {
         res.status(404).json({
           success: false,
@@ -231,6 +231,66 @@ class UserController {
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve user statistics',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
+    }
+  }
+
+  async getProjectLimits(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      const userService = this.getUserService();
+      const limitInfo = await userService.getProjectLimitInfo(userId);
+
+      res.json({
+        success: true,
+        data: limitInfo
+      });
+    } catch (error: any) {
+      console.error('Get project limits error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve project limit information',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
+    }
+  }
+
+  async checkCanCreateProject(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      const userService = this.getUserService();
+      const canCreate = await userService.canCreateProject(userId);
+
+      res.json({
+        success: true,
+        data: canCreate
+      });
+    } catch (error: any) {
+      console.error('Check can create project error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check project creation permission',
         error: 'INTERNAL_SERVER_ERROR'
       });
     }
