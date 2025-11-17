@@ -37,10 +37,23 @@ class FirebaseConfig {
       console.log(`   Private Key: ${process.env.FIREBASE_PRIVATE_KEY ? 'SET' : 'NOT SET'}`);
 
       // Initialize Firebase Admin SDK (Free Tier - Firestore only)
+      // Handle private key - Vercel may store it with literal \n or actual newlines
+      let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+      
+      // If the key contains literal \n, replace with actual newlines
+      if (privateKey?.includes('\\n')) {
+        privateKey = privateKey.replace(/\\n/g, '\n');
+      }
+      
+      // Additional validation
+      if (!privateKey?.includes('BEGIN PRIVATE KEY')) {
+        throw new Error('FIREBASE_PRIVATE_KEY appears to be malformed. It should start with -----BEGIN PRIVATE KEY-----');
+      }
+
       const serviceAccount = {
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        privateKey: privateKey,
       };
 
       admin.initializeApp({
