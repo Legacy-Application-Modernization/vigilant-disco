@@ -131,8 +131,30 @@ const Header: React.FC<HeaderProps> = ({ user, refreshKey }) => {
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
                   <div className="text-right hidden sm:block">
-                    <div className="text-sm font-medium text-gray-900">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                    <div className="flex items-center space-x-2 justify-end">
+                      <div className="text-sm font-medium text-gray-900">
+                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                      </div>
+                      {/* Role Badge */}
+                      {projectLimits && (
+                        <span 
+                          className={`
+                            inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                            ${projectLimits.role === 'admin' 
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200' 
+                              : projectLimits.role === 'manager'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-gray-100 text-gray-800 border border-gray-200'
+                            }
+                          `}
+                          title={`Role: ${projectLimits.role}`}
+                        >
+                          {projectLimits.role === 'admin' && '👑'}
+                          {projectLimits.role === 'manager' && '📊'}
+                          {projectLimits.role === 'user' && '👤'}
+                          <span className="ml-1 capitalize">{projectLimits.role}</span>
+                        </span>
+                      )}
                     </div>
                     {/* <div className="text-xs text-gray-500">
                       {user.email}
@@ -156,6 +178,21 @@ const Header: React.FC<HeaderProps> = ({ user, refreshKey }) => {
                     >
                       {(user.displayName?.[0] || user.email?.[0] || 'U').toUpperCase()}
                     </div>
+                    {/* Role indicator badge on avatar for admins/managers */}
+                    {projectLimits && projectLimits.role !== 'user' && (
+                      <div 
+                        className={`
+                          absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center text-xs border-2 border-white
+                          ${projectLimits.role === 'admin' 
+                            ? 'bg-purple-500' 
+                            : 'bg-blue-500'
+                          }
+                        `}
+                        title={`${projectLimits.role.charAt(0).toUpperCase() + projectLimits.role.slice(1)} Role`}
+                      >
+                        {projectLimits.role === 'admin' ? '👑' : '📊'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
