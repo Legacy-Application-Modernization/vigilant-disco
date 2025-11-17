@@ -199,6 +199,30 @@ const AppContent: React.FC = () => {
     setProjectLimitsRefreshKey(prev => prev + 1);
   };
 
+  const handleCancelTransformation = (): void => {
+    // Clear cached transformation data from localStorage
+    try {
+      const storedRepo = localStorage.getItem('selectedRepository');
+      if (storedRepo) {
+        const parsedRepo = JSON.parse(storedRepo);
+        const repoKey = `${parsedRepo.owner?.login || parsedRepo.owner}_${parsedRepo.name || parsedRepo.repo}`;
+        const cacheKey = `cachedTransformationData_${repoKey}`;
+        localStorage.removeItem(cacheKey);
+        console.log('Cleared transformation cache for repository:', repoKey);
+      }
+      // Also remove any generic cached transformation data
+      localStorage.removeItem('cachedTransformationData');
+    } catch (error) {
+      console.error('Error clearing transformation cache:', error);
+    }
+
+    // Reset to step 1 (Upload Files)
+    setCurrentStep(1);
+    
+    // Optionally navigate to dashboard
+    // setActiveTab('dashboard');
+  };
+
   const handleNewConversion = async () => {
     try {
       // Check if user can create a new project
@@ -283,6 +307,7 @@ const AppContent: React.FC = () => {
           <CodeTransformation
             onBack={() => goToStep(2)}
             onNext={() => goToStep(4)}
+            onCancelTransformation={handleCancelTransformation}
           />
         );
       case 4:
@@ -290,6 +315,7 @@ const AppContent: React.FC = () => {
           <MigrationReview
             summary={transformationSummary}
             onExportProject={() => goToStep(5)}
+            onCancelTransformation={handleCancelTransformation}
           />
         );
       case 5:
