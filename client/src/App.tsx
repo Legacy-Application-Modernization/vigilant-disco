@@ -29,6 +29,9 @@ import type { FileStructure } from './types/conversion';
 import { mcpService } from './services/mcpService';
 import apiService from './services/api';
 
+// Migration utility
+import { migrateFromLocalStorage } from './utils/migration';
+
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
 // Main App Content Component (wrapped by AuthProvider)
@@ -67,6 +70,11 @@ const AppContent: React.FC = () => {
 
   // Firebase Auth Listener
   useEffect(() => {
+    // Run migration from localStorage to IndexedDB on app startup
+    migrateFromLocalStorage().catch(err => 
+      console.error('Migration failed:', err)
+    );
+
     if (!auth) {
       // Firebase not configured; skip auth listener and clear loading so app can show UI accordingly
       setAuthLoading(false);

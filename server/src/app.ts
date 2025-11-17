@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
 // Import configuration and middleware
@@ -89,6 +90,9 @@ class App {
 
     // Compression middleware
     this.app.use(compression() as unknown as express.RequestHandler);
+
+    // Cookie parser middleware
+    this.app.use(cookieParser());
 
     // Body parsing middleware
     this.app.use(express.json({ limit: '1mb' }));

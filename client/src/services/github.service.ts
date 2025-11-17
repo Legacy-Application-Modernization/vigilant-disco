@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { cacheManager, CACHE_KEYS, CACHE_EXPIRATION } from '../utils/cacheManager';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
@@ -20,59 +21,38 @@ export interface GitHubFile {
 }
 
 class GitHubService {
-  private token: string | null = null;
-
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem('github_token', token);
-  }
-
-  getToken(): string | null {
-    if (!this.token) {
-      this.token = localStorage.getItem('github_token');
-    }
-    return this.token;
-  }
-
-  clearToken() {
-    this.token = null;
-    localStorage.removeItem('github_token');
-  }
+  // Note: GitHub tokens are now handled via HTTP-only cookies on the server
+  // The client no longer stores or manages tokens directly
 
   async getAuthUrl(): Promise<string> {
-    const response = await axios.get(`${API_BASE_URL}/github/auth`);
+    const response = await axios.get(`${API_BASE_URL}/github/auth`, {
+      withCredentials: true, // Include cookies
+    });
     return response.data.authUrl;
   }
 
   async handleCallback(code: string): Promise<{ accessToken: string; user: any }> {
-    const response = await axios.post(`${API_BASE_URL}/github/callback`, { code });
+    const response = await axios.post(
+      `${API_BASE_URL}/github/callback`, 
+      { code },
+      { withCredentials: true } // Server will set HTTP-only cookie
+    );
     const { accessToken, user } = response.data;
-    this.setToken(accessToken);
     return { accessToken, user };
   }
 
   async getRepositories(): Promise<GitHubRepository[]> {
-    const token = this.getToken();
-    if (!token) throw new Error('No GitHub token available');
-
     const response = await axios.get(`${API_BASE_URL}/github/repos`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      withCredentials: true, // Send auth cookie
     });
     return response.data.repositories;
   }
 
   async getRepoContents(owner: string, repo: string, path: string = ''): Promise<any[]> {
-    const token = this.getToken();
-    if (!token) throw new Error('No GitHub token available');
-
     const response = await axios.get(
       `${API_BASE_URL}/github/repos/${owner}/${repo}/contents`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        withCredentials: true,
         params: { path },
       }
     );
@@ -80,15 +60,10 @@ class GitHubService {
   }
 
   async getFileContent(owner: string, repo: string, path: string): Promise<GitHubFile> {
-    const token = this.getToken();
-    if (!token) throw new Error('No GitHub token available');
-
     const response = await axios.get(
       `${API_BASE_URL}/github/repos/${owner}/${repo}/file`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        withCredentials: true,
         params: { path },
       }
     );
@@ -96,19 +71,27 @@ class GitHubService {
   }
 
   async searchPhpFiles(owner: string, repo: string, maxDepth: number = 5): Promise<GitHubFile[]> {
-    const token = this.getToken();
-    if (!token) throw new Error('No GitHub token available');
-
     const response = await axios.post(
       `${API_BASE_URL}/github/repos/${owner}/${repo}/search-php`,
       { maxDepth },
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        withCredentials: true,
       }
     );
     return response.data.files;
+  }
+
+  // Store selected repository in IndexedDB (not sensitive data)
+  async saveSelectedRepository(repo: GitHubRepository): Promise<void> {
+    await cacheManager.set(CACHE_KEYS.SELECTED_REPOSITORY, repo, CACHE_EXPIRATION.ONE_DAY);
+  }
+
+  async getSelectedRepository(): Promise<GitHubRepository | null> {
+    return await cacheManager.get<GitHubRepository>(CACHE_KEYS.SELECTED_REPOSITORY);
+  }
+
+  async clearSelectedRepository(): Promise<void> {
+    await cacheManager.remove(CACHE_KEYS.SELECTED_REPOSITORY);
   }
 }
 
