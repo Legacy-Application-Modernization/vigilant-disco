@@ -27,7 +27,7 @@ interface UploadFilesProps {
 }
 
 const UploadFiles: FC<UploadFilesProps> = ({ 
-  onAnalyzeCode 
+  onAnalyzeCode
 }) => {
   const [isImporting, setIsImporting] = useState(false);
   const [showRepoDialog, setShowRepoDialog] = useState(false);

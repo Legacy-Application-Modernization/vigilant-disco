@@ -1,13 +1,43 @@
 // src/components/layout/Header.tsx
-import React from 'react';
-import {  type User } from 'firebase/auth';
-// import { auth } from '../../firebase/config';
+import React, { useEffect, useState } from 'react';
+import { type User } from 'firebase/auth';
+import { Folder } from 'lucide-react';
+import apiService from '../../services/api';
 
 interface HeaderProps {
   user?: User | null;
+  refreshKey?: number; // Optional prop to trigger refresh
 }
 
-const Header: React.FC<HeaderProps> = ({ user }) => {
+interface ProjectLimits {
+  currentCount: number;
+  maxAllowed: number | null;
+  role: string;
+}
+
+const Header: React.FC<HeaderProps> = ({ user, refreshKey }) => {
+  const [projectLimits, setProjectLimits] = useState<ProjectLimits | null>(null);
+  const [loadingLimits, setLoadingLimits] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchProjectLimits();
+    }
+  }, [user, refreshKey]); // Re-fetch when refreshKey changes
+
+  const fetchProjectLimits = async () => {
+    try {
+      setLoadingLimits(true);
+      const response = await apiService.getProjectLimits();
+      if (response.success) {
+        setProjectLimits(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch project limits:', error);
+    } finally {
+      setLoadingLimits(false);
+    }
+  };
   // const handleLogout = async (): Promise<void> => {
   //   try {
   //     await signOut(auth);
@@ -38,6 +68,56 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
           
           {/* Right side - User info */}
           <div className="flex items-center space-x-4">
+            {/* Project Limits Display */}
+            {user && projectLimits && (
+              <div 
+                className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors cursor-default group relative"
+                title={
+                  projectLimits.maxAllowed !== null
+                    ? `You have used ${projectLimits.currentCount} out of ${projectLimits.maxAllowed} projects`
+                    : `Unlimited projects (${projectLimits.role})`
+                }
+              >
+                <Folder className="h-4 w-4 text-indigo-600" />
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm font-semibold text-indigo-900">
+                    {projectLimits.currentCount}
+                  </span>
+                  {projectLimits.maxAllowed !== null ? (
+                    <>
+                      <span className="text-sm text-indigo-600">/</span>
+                      <span className="text-sm font-medium text-indigo-700">
+                        {projectLimits.maxAllowed}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-indigo-600 ml-1">∞</span>
+                  )}
+                  <span className="text-xs text-indigo-600 ml-1">projects</span>
+                </div>
+                
+                {/* Progress bar for limited users */}
+                {projectLimits.maxAllowed !== null && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-200 rounded-b-lg overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-600 transition-all duration-300"
+                      style={{ width: `${(projectLimits.currentCount / projectLimits.maxAllowed) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Loading state for project limits */}
+            {user && loadingLimits && (
+              <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg">
+                <div className="animate-pulse flex space-x-2">
+                  <div className="h-4 w-4 bg-gray-300 rounded"></div>
+                  <div className="h-4 w-16 bg-gray-300 rounded"></div>
+                </div>
+              </div>
+            )}
+
             {/* Notifications */}
             <button className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-full">
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

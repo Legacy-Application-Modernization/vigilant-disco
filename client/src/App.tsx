@@ -61,6 +61,9 @@ const AppContent: React.FC = () => {
   // Project limit dialog state
   const [showProjectLimitDialog, setShowProjectLimitDialog] = useState<boolean>(false);
   const [projectLimitInfo, setProjectLimitInfo] = useState<{ currentCount: number; maxAllowed: number } | null>(null);
+  
+  // Project limits refresh key - increment to refresh header
+  const [projectLimitsRefreshKey, setProjectLimitsRefreshKey] = useState<number>(0);
 
   // Firebase Auth Listener
   useEffect(() => {
@@ -184,6 +187,8 @@ const AppContent: React.FC = () => {
   const analyzeCode = (): void => {
     // populate reportsData if needed; currently navigate to next step
     goToStep(2);
+    // Refresh project limits after starting analysis
+    setProjectLimitsRefreshKey(prev => prev + 1);
   };
 
   const handleNewConversion = async () => {
@@ -303,7 +308,7 @@ const AppContent: React.FC = () => {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} />
+        <Header user={user} refreshKey={projectLimitsRefreshKey} />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
           {renderMainContent()}
         </main>

@@ -114,6 +114,57 @@ class UserService {
     return updatedProfile;
   }
 
+  async updateUserRole(uid: string, role: UserRole): Promise<UserProfile> {
+    if (!['admin', 'manager', 'user'].includes(role)) {
+      throw new Error('Invalid role. Must be: admin, manager, or user');
+    }
+
+    await this.getFirestore()
+      .collection(this.usersCollection)
+      .doc(uid)
+      .update({
+        role,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+
+    const updatedProfile = await this.getUserProfile(uid);
+    if (!updatedProfile) {
+      throw new Error('Failed to retrieve updated profile');
+    }
+
+    return updatedProfile;
+  }
+
+  async getUserByEmail(email: string): Promise<UserProfile | null> {
+    const snapshot = await this.getFirestore()
+      .collection(this.usersCollection)
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return null;
+    }
+
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    return {
+      uid: doc.id,
+      email: data?.email || '',
+      displayName: data?.displayName,
+      photoURL: data?.photoURL,
+      role: data?.role || 'user',
+      plan: data?.plan || 'free',
+      preferences: data?.preferences,
+      createdAt: data?.createdAt?.toDate() || new Date(),
+      updatedAt: data?.updatedAt?.toDate() || new Date(),
+      usage: {
+        ...data?.usage,
+        lastActive: data?.usage?.lastActive?.toDate() || new Date()
+      }
+    } as UserProfile;
+  }
+
   async updateLastActive(uid: string): Promise<void> {
     await this.getFirestore()
       .collection(this.usersCollection)

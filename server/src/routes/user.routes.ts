@@ -27,3 +27,6 @@ router.get('/project-limits', userController.getProjectLimits.bind(userControlle
 router.get('/can-create-project', userController.checkCanCreateProject.bind(userController));
 
 export default router;
+
+// Admin routes - update user roles
+router.put('/admin/update-role', userController.updateUserRole.bind(userController));
