@@ -5,7 +5,7 @@ export const currentUser: User = {
   name: 'Alex Johnson',
   email: 'alex.johnson@example.com',
   avatar: 'https://ui-avatars.com/api/?name=Alex+Johnson&background=6366f1&color=fff',
-  role: 'Developer',
+  role: 'user',
   plan: 'Pro',
   joinDate: 'January 15, 2025',
   company: 'TechFusion Inc.',
