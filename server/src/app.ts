@@ -117,6 +117,9 @@ class App {
   }
 
   private initializeRoutes(): void {
+    // Handle preflight requests explicitly
+    this.app.options('*', cors());
+
     // Basic welcome route
     this.app.get('/', (req, res) => {
       res.json({
