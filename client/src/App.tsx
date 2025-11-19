@@ -18,7 +18,6 @@ import CodeAnalysis from './components/converter/CodeAnalysis';
 import CodeTransformation from './components/converter/CodeTransformation';
 import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
-import GitHubCallback from './components/GitHubCallback';
 import ProjectLimitDialog from './components/common/ProjectLimitDialog';
 
 // Authentication Component
@@ -45,9 +44,6 @@ const AppContent: React.FC = () => {
     analysisResult: any;
     conversionPlanner: any;
   } | null>(null);
-
-  // Check if this is a GitHub callback
-  const isGitHubCallback = window.location.pathname === '/github-callback';
 
   // Original App State
   const [_mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; sessionToken: string | null }>({ 
@@ -108,22 +104,6 @@ const AppContent: React.FC = () => {
       }
     }
   }, [user]);
-
-  // Handle GitHub OAuth redirect (when popup is blocked)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const githubAuth = urlParams.get('github_auth');
-    
-    if (githubAuth === 'success' && activeTab === 'converter') {
-      console.log('GitHub OAuth redirect detected, switching to converter tab');
-      // The UploadFiles component will handle the stored code
-    }
-  }, [activeTab]);
-
-  // If this is a GitHub callback route, render the callback component
-  if (isGitHubCallback) {
-    return <GitHubCallback />;
-  }
 
   // Show loading during auth check
   if (authLoading) {
@@ -322,6 +302,14 @@ const AppContent: React.FC = () => {
         return (
           <ExportProject
             fileStructure={fileStructure}
+            onBack={() => goToStep(4)}
+            onComplete={() => {
+              // Navigate to projects tab after successful save
+              setActiveTab('projects');
+              setCurrentStep(1);
+              // Refresh project limits
+              setProjectLimitsRefreshKey(prev => prev + 1);
+            }}
           />
         );
       default:

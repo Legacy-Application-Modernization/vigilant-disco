@@ -20,8 +20,12 @@ interface CodeAnalysisProps {
   onStartTransformation: () => void;
   onViewReports: (data: { analysisResult: any; conversionPlanner: any }) => void;
   repositoryData?: {
-    owner: string;
-    repo: string;
+    name?: string;
+    url?: string;
+    branch?: string;
+    // Legacy format support
+    owner?: string;
+    repo?: string;
   };
 }
 
@@ -74,10 +78,29 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       if (storedRepo) {
         try {
           const parsedRepo = JSON.parse(storedRepo);
-          repoData = {
-            owner: parsedRepo.owner?.login || parsedRepo.owner,
-            repo: parsedRepo.name || parsedRepo.repo
-          };
+          
+          // Handle new format (url-based)
+          if (parsedRepo.url) {
+            // Extract owner and repo from URL
+            const urlParts = parsedRepo.url.split('/');
+            const repoName = urlParts[urlParts.length - 1].replace('.git', '');
+            const owner = urlParts[urlParts.length - 2];
+            
+            repoData = {
+              name: parsedRepo.name || repoName,
+              url: parsedRepo.url,
+              branch: parsedRepo.branch || 'main',
+              owner: owner,
+              repo: repoName
+            };
+          } 
+          // Handle legacy format (owner/repo)
+          else if (parsedRepo.owner || parsedRepo.repo) {
+            repoData = {
+              owner: parsedRepo.owner?.login || parsedRepo.owner,
+              repo: parsedRepo.name || parsedRepo.repo
+            };
+          }
         } catch (e) {
           console.error('Failed to parse stored repository data', e);
         }
@@ -85,7 +108,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     }
     
     // Final fallback to default values
-    if (!repoData) {
+    if (!repoData || (!repoData.owner && !repoData.url)) {
       repoData = {
         owner: "Legacy-Application-Modernization",
         repo: "Blog-API-PHP"
@@ -101,7 +124,9 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
         },
         body: JSON.stringify({
           owner: repoData.owner,
-          repo: repoData.repo
+          repo: repoData.repo || repoData.name,
+          url: repoData.url,
+          branch: repoData.branch
         })
       });
 
@@ -124,7 +149,9 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
         },
         body: JSON.stringify({
           owner: repoData.owner,
-          repo: repoData.repo
+          repo: repoData.repo || repoData.name,
+          url: repoData.url,
+          branch: repoData.branch
         })
       });
 

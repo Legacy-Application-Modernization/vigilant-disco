@@ -455,6 +455,68 @@ class ProjectController {
       });
     }
   }
+
+  // POST /api/projects/validate-git-url - Validate Git URL
+  async validateGitUrl(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+      
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      const { url, branch } = req.body;
+
+      if (!url) {
+        res.status(400).json({
+          success: false,
+          message: 'Git URL is required',
+          error: 'VALIDATION_ERROR'
+        });
+        return;
+      }
+
+      // Basic Git URL validation
+      const gitUrlPattern = /^(https?:\/\/)?([\w\.-]+@)?([\w\.-]+)(:\d+)?(\/[\w\.-\/]+)(\.git)?$/;
+      const isValidUrl = gitUrlPattern.test(url);
+
+      if (!isValidUrl) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid Git URL format',
+          error: 'INVALID_URL'
+        });
+        return;
+      }
+
+      // Extract repository name from URL
+      const urlParts = url.split('/');
+      const repoName = urlParts[urlParts.length - 1].replace('.git', '');
+
+      res.json({
+        success: true,
+        message: 'Git URL is valid',
+        data: {
+          url,
+          branch: branch || 'main',
+          repositoryName: repoName,
+          isValid: true
+        }
+      });
+    } catch (error: any) {
+      console.error('Validate Git URL error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to validate Git URL',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
+    }
+  }
 }
 
 export default ProjectController;

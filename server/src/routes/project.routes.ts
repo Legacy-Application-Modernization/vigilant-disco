@@ -24,4 +24,7 @@ router.post('/:id/notes', projectController.addProjectNote.bind(projectControlle
 // Project tags
 router.get('/by-tag/:tag', projectController.getProjectsByTag.bind(projectController));
 
+// Git URL validation
+router.post('/validate-git-url', projectController.validateGitUrl.bind(projectController));
+
 export default router;
