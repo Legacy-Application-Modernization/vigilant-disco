@@ -5,7 +5,7 @@ interface Project {
   id: string;
   name: string;
   description?: string;
-  status: 'draft' | 'planning' | 'in-progress' | 'completed' | 'archived';
+  status: 'planning' | 'in-progress' | 'completed' | 'archived';
   sourceLanguage: string;
   targetLanguage?: string;
   createdAt: string;
@@ -23,7 +23,6 @@ interface ProjectCardProps {
 const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
   const getStatusBadge = (status: string) => {
     const statusStyles = {
-      draft: 'bg-gray-100 text-gray-800',
       planning: 'bg-blue-100 text-blue-800',
       'in-progress': 'bg-yellow-100 text-yellow-800',
       completed: 'bg-green-100 text-green-800',
@@ -31,7 +30,7 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
     };
 
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[status as keyof typeof statusStyles] || statusStyles.draft}`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[status as keyof typeof statusStyles] || statusStyles.planning}`}>
         {status.replace('-', ' ')}
       </span>
     );
@@ -39,7 +38,6 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
 
   const getProgressPercentage = (status: string) => {
     const progressMap = {
-      draft: 0,
       planning: 25,
       'in-progress': 65,
       completed: 100,
@@ -73,27 +71,6 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
         {project.description && (
           <p className="mt-2 text-sm text-gray-600 line-clamp-2">{project.description}</p>
         )}
-        
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">Progress</span>
-            <span className="font-medium">{progress}%</span>
-          </div>
-          <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className={`h-2 rounded-full ${
-                project.status === 'completed' 
-                  ? 'bg-green-500' 
-                  : project.status === 'in-progress' 
-                    ? 'bg-blue-500' 
-                    : project.status === 'planning'
-                      ? 'bg-yellow-500'
-                      : 'bg-gray-400'
-              }`}
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
         
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -131,30 +108,7 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
         )}
       </div>
       
-      <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 flex justify-between items-center">
-        <div className="flex space-x-2">
-          <button 
-            className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center"
-            onClick={() => console.log('View project:', project.id)}
-          >
-            <Eye className="h-4 w-4 mr-1" />
-            View
-          </button>
-          
-          {/* Quick status update */}
-          <select
-            value={project.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="text-xs border-gray-300 rounded px-2 py-1"
-          >
-            <option value="draft">Draft</option>
-            <option value="planning">Planning</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="archived">Archived</option>
-          </select>
-        </div>
-        
+      <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 flex justify-end items-center">
         <div className="flex space-x-2">
           <button 
             className="text-gray-500 hover:text-gray-700"

@@ -11,6 +11,7 @@ const createProjectSchema = Joi.object({
   description: Joi.string().max(500).optional(),
   sourceLanguage: Joi.string().required(),
   targetLanguage: Joi.string().optional(),
+  status: Joi.string().valid('planning', 'in-progress', 'completed', 'archived').optional(),
   tags: Joi.array().items(Joi.string()).optional(),
   settings: Joi.object({
     preserveComments: Joi.boolean().optional(),
@@ -19,6 +20,16 @@ const createProjectSchema = Joi.object({
     addDocumentation: Joi.boolean().optional(),
     targetFramework: Joi.string().optional(),
     conversionNotes: Joi.string().optional()
+  }).optional(),
+  metadata: Joi.object({
+    repositoryUrl: Joi.string().optional(),
+    branch: Joi.string().optional(),
+    analysisResult: Joi.any().optional(),
+    conversionPlanner: Joi.any().optional(),
+    transformationData: Joi.any().optional(),
+    fileStructure: Joi.array().optional(),
+    estimatedComplexity: Joi.string().valid('low', 'medium', 'high').optional(),
+    notes: Joi.string().optional()
   }).optional()
 });
 

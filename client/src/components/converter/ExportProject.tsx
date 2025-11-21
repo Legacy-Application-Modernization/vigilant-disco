@@ -36,6 +36,7 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
         description: `Migrated from ${repoData.url || 'PHP project'}`,
         sourceLanguage: 'PHP',
         targetLanguage: 'Node.js',
+        status: 'completed',
         tags: ['migration', 'php', 'nodejs'],
         settings: {
           preserveComments: true,

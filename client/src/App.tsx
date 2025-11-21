@@ -330,7 +330,15 @@ const AppContent: React.FC = () => {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} refreshKey={projectLimitsRefreshKey} />
+        <Header 
+          user={user} 
+          refreshKey={projectLimitsRefreshKey}
+          onSearch={(query) => {
+            setActiveTab('projects');
+            // You can store the search query in state if needed
+            console.log('Search query:', query);
+          }}
+        />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
           {renderMainContent()}
         </main>

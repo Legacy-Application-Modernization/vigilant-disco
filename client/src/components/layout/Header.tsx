@@ -7,6 +7,7 @@ import apiService from '../../services/api';
 interface HeaderProps {
   user?: User | null;
   refreshKey?: number; // Optional prop to trigger refresh
+  onSearch?: (query: string) => void; // Callback for search
 }
 
 interface ProjectLimits {
@@ -15,9 +16,10 @@ interface ProjectLimits {
   role: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, refreshKey }) => {
+const Header: React.FC<HeaderProps> = ({ user, refreshKey, onSearch }) => {
   const [projectLimits, setProjectLimits] = useState<ProjectLimits | null>(null);
   const [loadingLimits, setLoadingLimits] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -36,6 +38,23 @@ const Header: React.FC<HeaderProps> = ({ user, refreshKey }) => {
       console.error('Failed to fetch project limits:', error);
     } finally {
       setLoadingLimits(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      if (onSearch) {
+        onSearch(searchQuery);
+      }
+      // Clear search input after search
+      setSearchQuery('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
     }
   };
   // const handleLogout = async (): Promise<void> => {
@@ -60,6 +79,9 @@ const Header: React.FC<HeaderProps> = ({ user, refreshKey }) => {
               </div>
               <input
                 type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Search projects, files, reports..."
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
               />
