@@ -10,8 +10,10 @@ import {
   Download,
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  XCircle
 } from 'lucide-react';
+import { auth } from '../../config/firebase';
 
 interface ConversionResult {
   source_file: string;
@@ -37,11 +39,13 @@ interface TransformationData {
 interface CodeTransformationProps {
   onBack: () => void;
   onNext: () => void;
+  onCancelTransformation?: () => void;
 }
 
 const CodeTransformation: FC<CodeTransformationProps> = ({ 
   onBack,
-  onNext
+  onNext,
+  onCancelTransformation
 }) => {
   // Initialize state from localStorage if available
   const [transformationData, setTransformationData] = useState<TransformationData | null>(() => {
@@ -109,6 +113,15 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       setLoading(true);
       setError(null);
 
+      // Get current user ID from Firebase
+            const currentUser = auth?.currentUser;
+            if (!currentUser) {
+              setError('User not authenticated. Please log in.');
+              setLoading(false);
+              return;
+            }
+            const userId = currentUser.uid;
+
       // Get repository data from localStorage
       let repoData = null;
       const storedRepo = localStorage.getItem('selectedRepository');
@@ -117,7 +130,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           const parsedRepo = JSON.parse(storedRepo);
           repoData = {
             owner: parsedRepo.owner?.login || parsedRepo.owner,
-            repo: parsedRepo.name || parsedRepo.repo
+            repo: parsedRepo.name || parsedRepo.repo,
+            user_id: userId
           };
         } catch (e) {
           console.error('Failed to parse stored repository data', e);
@@ -128,9 +142,11 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       if (!repoData) {
         repoData = {
           owner: "Legacy-Application-Modernization",
-          repo: "Blog-API-PHP"
+          repo: "Blog-API-PHP",
+          user_id: userId
         };
-      }
+      } 
+      console.log(repoData);
 
       // Fetch transformation results from the server API
       try {
@@ -141,7 +157,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           },
           body: JSON.stringify({
             owner: repoData.owner,
-            repo: repoData.repo
+            repo: repoData.repo,
+            user_id: userId
           })
         });
 
@@ -491,12 +508,27 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
       {/* Navigation */}
       <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-        <button
-          onClick={onBack}
-          className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
-        >
-          <ChevronLeft size={18} className="mr-1" /> Back to Analysis
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={onBack}
+            className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
+          >
+            <ChevronLeft size={18} className="mr-1" /> Back to Analysis
+          </button>
+          
+          {onCancelTransformation && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to cancel this transformation? All converted code will be discarded and you will need to start over.')) {
+                  onCancelTransformation();
+                }
+              }}
+              className="text-red-600 px-6 py-2 rounded-md hover:bg-red-50 transition-colors flex items-center border border-red-300"
+            >
+              <XCircle size={18} className="mr-1" /> Cancel Transformation
+            </button>
+          )}
+        </div>
 
         <div className="flex space-x-3">
           <button

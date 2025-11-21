@@ -1,13 +1,20 @@
 import type { FC } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import type { TransformationSummary } from '../../types/conversion';
 
 interface MigrationReviewProps {
   summary: TransformationSummary;
   onExportProject: () => void;
+  onCancelTransformation?: () => void;
 }
 
-const MigrationReview: FC<MigrationReviewProps> = ({ summary, onExportProject }) => {
+const MigrationReview: FC<MigrationReviewProps> = ({ summary, onExportProject, onCancelTransformation }) => {
+  const handleCancelTransformation = () => {
+    if (window.confirm('Are you sure you want to cancel this transformation? All converted code will be discarded and you will need to start over.')) {
+      onCancelTransformation?.();
+    }
+  };
+
   return (
     <div className="p-8">
       <h2 className="text-2xl font-bold mb-6">Migration Review</h2>
@@ -104,9 +111,20 @@ const MigrationReview: FC<MigrationReviewProps> = ({ summary, onExportProject })
       </div>
       
       <div className="flex justify-between">
-        <button className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center">
-          <ChevronLeft size={18} className="mr-1" /> Back to Edit
-        </button>
+        <div className="flex gap-3">
+          <button className="text-indigo-500 px-6 py-2 rounded-md hover:bg-indigo-50 transition-colors flex items-center">
+            <ChevronLeft size={18} className="mr-1" /> Back to Edit
+          </button>
+          
+          {onCancelTransformation && (
+            <button 
+              onClick={handleCancelTransformation}
+              className="text-red-600 px-6 py-2 rounded-md hover:bg-red-50 transition-colors flex items-center border border-red-300"
+            >
+              <XCircle size={18} className="mr-1" /> Cancel Transformation
+            </button>
+          )}
+        </div>
         
         <button 
           onClick={onExportProject}

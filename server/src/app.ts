@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 
 // Import configuration and middleware
@@ -54,8 +55,10 @@ class App {
     // CORS configuration - allow specific origins
     const allowedOrigins = [
       'http://localhost:5173',
+      'http://localhost:5174',
       'http://localhost:3000', 
       'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
       'https://vigilant-disco-client.vercel.app',
       // Add any preview deployments here as needed
     ];
@@ -89,6 +92,9 @@ class App {
 
     // Compression middleware
     this.app.use(compression() as unknown as express.RequestHandler);
+
+    // Cookie parser middleware
+    this.app.use(cookieParser());
 
     // Body parsing middleware
     this.app.use(express.json({ limit: '1mb' }));

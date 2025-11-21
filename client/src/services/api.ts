@@ -21,6 +21,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true, // Enable sending cookies with requests
     });
 
     // Debug axios configuration
@@ -31,7 +32,8 @@ class ApiService {
       async (config) => {
         console.log('🚀 Making request to:', (config.baseURL ?? '') + config.url);
 
-        // `auth` may be null if Firebase isn't configured. Guard usages.
+        // Try to get Firebase token and send it as Authorization header
+        // Server will check cookie first, then fall back to this header
         const user = auth?.currentUser ?? null;
         if (user) {
           try {
@@ -92,6 +94,14 @@ class ApiService {
 
   async getUserStats(): Promise<any> {
     return this.request('GET', '/api/v1/users/stats');
+  }
+
+  async getProjectLimits(): Promise<any> {
+    return this.request('GET', '/api/v1/users/project-limits');
+  }
+
+  async checkCanCreateProject(): Promise<any> {
+    return this.request('GET', '/api/v1/users/can-create-project');
   }
 
   async createProject(projectData: any): Promise<any> {

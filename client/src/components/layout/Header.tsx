@@ -1,13 +1,62 @@
 // src/components/layout/Header.tsx
-import React from 'react';
-import {  type User } from 'firebase/auth';
-// import { auth } from '../../firebase/config';
+import React, { useEffect, useState } from 'react';
+import { type User } from 'firebase/auth';
+import { Folder } from 'lucide-react';
+import apiService from '../../services/api';
 
 interface HeaderProps {
   user?: User | null;
+  refreshKey?: number; // Optional prop to trigger refresh
+  onSearch?: (query: string) => void; // Callback for search
 }
 
-const Header: React.FC<HeaderProps> = ({ user }) => {
+interface ProjectLimits {
+  currentCount: number;
+  maxAllowed: number | null;
+  role: string;
+}
+
+const Header: React.FC<HeaderProps> = ({ user, refreshKey, onSearch }) => {
+  const [projectLimits, setProjectLimits] = useState<ProjectLimits | null>(null);
+  const [loadingLimits, setLoadingLimits] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      fetchProjectLimits();
+    }
+  }, [user, refreshKey]); // Re-fetch when refreshKey changes
+
+  const fetchProjectLimits = async () => {
+    try {
+      setLoadingLimits(true);
+      const response = await apiService.getProjectLimits();
+      if (response.success) {
+        setProjectLimits(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch project limits:', error);
+    } finally {
+      setLoadingLimits(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      if (onSearch) {
+        onSearch(searchQuery);
+      }
+      // Clear search input after search
+      setSearchQuery('');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
   // const handleLogout = async (): Promise<void> => {
   //   try {
   //     await signOut(auth);
@@ -30,6 +79,9 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
               </div>
               <input
                 type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder="Search projects, files, reports..."
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
               />
@@ -38,6 +90,56 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
           
           {/* Right side - User info */}
           <div className="flex items-center space-x-4">
+            {/* Project Limits Display */}
+            {user && projectLimits && (
+              <div 
+                className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-colors cursor-default group relative"
+                title={
+                  projectLimits.maxAllowed !== null
+                    ? `You have used ${projectLimits.currentCount} out of ${projectLimits.maxAllowed} projects`
+                    : `Unlimited projects (${projectLimits.role})`
+                }
+              >
+                <Folder className="h-4 w-4 text-indigo-600" />
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm font-semibold text-indigo-900">
+                    {projectLimits.currentCount}
+                  </span>
+                  {projectLimits.maxAllowed !== null ? (
+                    <>
+                      <span className="text-sm text-indigo-600">/</span>
+                      <span className="text-sm font-medium text-indigo-700">
+                        {projectLimits.maxAllowed}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-indigo-600 ml-1">∞</span>
+                  )}
+                  <span className="text-xs text-indigo-600 ml-1">projects</span>
+                </div>
+                
+                {/* Progress bar for limited users */}
+                {projectLimits.maxAllowed !== null && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-200 rounded-b-lg overflow-hidden">
+                    <div 
+                      className="h-full bg-indigo-600 transition-all duration-300"
+                      style={{ width: `${(projectLimits.currentCount / projectLimits.maxAllowed) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Loading state for project limits */}
+            {user && loadingLimits && (
+              <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-lg">
+                <div className="animate-pulse flex space-x-2">
+                  <div className="h-4 w-4 bg-gray-300 rounded"></div>
+                  <div className="h-4 w-16 bg-gray-300 rounded"></div>
+                </div>
+              </div>
+            )}
+
             {/* Notifications */}
             <button className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-full">
               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,8 +153,30 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-2">
                   <div className="text-right hidden sm:block">
-                    <div className="text-sm font-medium text-gray-900">
-                      {user.displayName || user.email?.split('@')[0] || 'User'}
+                    <div className="flex items-center space-x-2 justify-end">
+                      <div className="text-sm font-medium text-gray-900">
+                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                      </div>
+                      {/* Role Badge */}
+                      {projectLimits && (
+                        <span 
+                          className={`
+                            inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                            ${projectLimits.role === 'admin' 
+                              ? 'bg-purple-100 text-purple-800 border border-purple-200' 
+                              : projectLimits.role === 'manager'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-gray-100 text-gray-800 border border-gray-200'
+                            }
+                          `}
+                          title={`Role: ${projectLimits.role}`}
+                        >
+                          {projectLimits.role === 'admin' && '👑'}
+                          {projectLimits.role === 'manager' && '📊'}
+                          {projectLimits.role === 'user' && '👤'}
+                          <span className="ml-1 capitalize">{projectLimits.role}</span>
+                        </span>
+                      )}
                     </div>
                     {/* <div className="text-xs text-gray-500">
                       {user.email}
@@ -76,6 +200,21 @@ const Header: React.FC<HeaderProps> = ({ user }) => {
                     >
                       {(user.displayName?.[0] || user.email?.[0] || 'U').toUpperCase()}
                     </div>
+                    {/* Role indicator badge on avatar for admins/managers */}
+                    {projectLimits && projectLimits.role !== 'user' && (
+                      <div 
+                        className={`
+                          absolute -bottom-1 -right-1 h-5 w-5 rounded-full flex items-center justify-center text-xs border-2 border-white
+                          ${projectLimits.role === 'admin' 
+                            ? 'bg-purple-500' 
+                            : 'bg-blue-500'
+                          }
+                        `}
+                        title={`${projectLimits.role.charAt(0).toUpperCase() + projectLimits.role.slice(1)} Role`}
+                      >
+                        {projectLimits.role === 'admin' ? '👑' : '📊'}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

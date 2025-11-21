@@ -14,9 +14,15 @@ export interface Project {
   updatedAt: Date;
   settings: ProjectSettings;
   metadata?: {
-    estimatedComplexity: 'low' | 'medium' | 'high';
+    estimatedComplexity?: 'low' | 'medium' | 'high';
     notes?: string;
     tags?: string[];
+    repositoryUrl?: string;
+    branch?: string;
+    analysisResult?: any;
+    conversionPlanner?: any;
+    transformationData?: any;
+    fileStructure?: any;
   };
 }
 
@@ -34,8 +40,20 @@ export interface CreateProjectData {
   description?: string;
   sourceLanguage: string;
   targetLanguage?: string;
+  status?: 'planning' | 'in-progress' | 'completed' | 'archived';
   settings?: Partial<ProjectSettings>;
   tags?: string[];
+  metadata?: {
+    repositoryUrl?: string;
+    branch?: string;
+    analysisResult?: any;
+    conversionPlanner?: any;
+    transformationData?: any;
+    fileStructure?: any;
+    estimatedComplexity?: 'low' | 'medium' | 'high';
+    notes?: string;
+    tags?: string[];
+  };
 }
 
 export interface UpdateProjectData {
@@ -61,6 +79,12 @@ class ProjectService {
   }
 
   async createProject(userId: string, projectData: CreateProjectData): Promise<Project> {
+    // Check if user can create a new project
+    const limitCheck = await this.userService.canCreateProject(userId);
+    if (!limitCheck.canCreate) {
+      throw new Error(limitCheck.reason || 'Cannot create project');
+    }
+
     const now = new Date();
     const projectId = this.getFirestore().collection(this.projectsCollection).doc().id;
 
@@ -72,21 +96,33 @@ class ProjectService {
       ...projectData.settings
     };
 
+    // Build metadata object, excluding undefined values
+    const metadata: any = {
+      estimatedComplexity: projectData.metadata?.estimatedComplexity || 'low',
+      tags: projectData.tags || projectData.metadata?.tags || []
+    };
+
+    // Only add optional fields if they have values
+    if (projectData.metadata?.repositoryUrl) metadata.repositoryUrl = projectData.metadata.repositoryUrl;
+    if (projectData.metadata?.branch) metadata.branch = projectData.metadata.branch;
+    if (projectData.metadata?.analysisResult) metadata.analysisResult = projectData.metadata.analysisResult;
+    if (projectData.metadata?.conversionPlanner) metadata.conversionPlanner = projectData.metadata.conversionPlanner;
+    if (projectData.metadata?.transformationData) metadata.transformationData = projectData.metadata.transformationData;
+    if (projectData.metadata?.fileStructure) metadata.fileStructure = projectData.metadata.fileStructure;
+    if (projectData.metadata?.notes) metadata.notes = projectData.metadata.notes;
+
     const project: Project = {
       id: projectId,
       userId,
       name: projectData.name,
       description: projectData.description,
-      status: 'draft',
+      status: projectData.status || 'planning',
       sourceLanguage: projectData.sourceLanguage,
       targetLanguage: projectData.targetLanguage,
       createdAt: now,
       updatedAt: now,
       settings: defaultSettings,
-      metadata: {
-        estimatedComplexity: 'low',
-        tags: projectData.tags || []
-      }
+      metadata
     };
 
     await this.getFirestore()
@@ -262,11 +298,30 @@ class ProjectService {
   }
 
   private serializeProject(project: Project): any {
-    return {
+    const serialized: any = {
       ...project,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt
     };
+
+    // Remove undefined values to avoid Firestore errors
+    this.removeUndefinedValues(serialized);
+    
+    return serialized;
+  }
+
+  private removeUndefinedValues(obj: any): void {
+    Object.keys(obj).forEach(key => {
+      if (obj[key] === undefined) {
+        delete obj[key];
+      } else if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key]) && !(obj[key] instanceof Date)) {
+        this.removeUndefinedValues(obj[key]);
+        // Remove empty objects
+        if (Object.keys(obj[key]).length === 0) {
+          delete obj[key];
+        }
+      }
+    });
   }
 
   private deserializeProject(data: any): Project {

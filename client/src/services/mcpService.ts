@@ -5,6 +5,9 @@
  * Handles communication with the MCP server for code analysis and transformation
  */
 
+import { SecureCacheManager } from '../utils/encryption';
+import { CACHE_KEYS, CACHE_EXPIRATION } from '../utils/cacheManager';
+
 // Configuration
 const MCP_API_URL = import.meta.env.VITE_MCP_API_URL || 'https://api.your-mcp-server.com';
 const MCP_API_KEY = import.meta.env.VITE_MCP_API_KEY;
@@ -48,16 +51,18 @@ class MCPService {
       ...options,
     };
 
-    // Try to restore session from localStorage
-    this.restoreSession();
+    // Try to restore session from IndexedDB (async, runs in background)
+    this.restoreSession().catch(err => 
+      console.error('Failed to restore session:', err)
+    );
   }
 
   /**
-   * Restore session from localStorage if available
+   * Restore session from IndexedDB if available
    */
-  private restoreSession(): void {
+  private async restoreSession(): Promise<void> {
     try {
-      const token = localStorage.getItem('mcp_session_token');
+      const token = await SecureCacheManager.getSecure<string>(CACHE_KEYS.MCP_SESSION);
       if (token) {
         this.sessionToken = token;
         this.isConnected = true;
@@ -91,8 +96,12 @@ class MCPService {
           this.defaultOptions.headers['Authorization'] = `Bearer ${this.sessionToken}`;
         }
         
-        // Save to localStorage for persistence
-        localStorage.setItem('mcp_session_token', this.sessionToken);
+        // Save to encrypted IndexedDB for persistence (1 week expiration)
+        await SecureCacheManager.setSecure(
+          CACHE_KEYS.MCP_SESSION, 
+          this.sessionToken,
+          CACHE_EXPIRATION.ONE_WEEK
+        );
         
         return true;
       }
@@ -107,7 +116,7 @@ class MCPService {
   /**
    * Disconnect from the MCP server
    */
-  disconnect(): void {
+  async disconnect(): Promise<void> {
     this.sessionToken = null;
     this.isConnected = false;
     
@@ -116,8 +125,8 @@ class MCPService {
       delete this.defaultOptions.headers['Authorization'];
     }
     
-    // Clear from localStorage
-    localStorage.removeItem('mcp_session_token');
+    // Clear from IndexedDB
+    await SecureCacheManager.removeSecure(CACHE_KEYS.MCP_SESSION);
   }
 
   /**

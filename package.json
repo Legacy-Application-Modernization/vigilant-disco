@@ -35,8 +35,8 @@
     "format:client": "cd client && npm run format"
   },
   "devDependencies": {
-    "@types/react": "^18.3.26",
-    "@types/react-dom": "^18.3.7",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
     "concurrently": "^8.2.2",
     "typescript": "^5.9.3"
   },
@@ -45,7 +45,13 @@
     "npm": ">=9.0.0"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "overrides": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9"
   }
 }

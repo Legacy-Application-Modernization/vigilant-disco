@@ -18,18 +18,21 @@ export const authenticateToken = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
+    // Try to get token from cookie first, then fall back to Authorization header
+    let token = req.cookies?.authToken;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({
-        success: false,
-        message: 'Authorization token required',
-        error: 'UNAUTHORIZED'
-      });
-      return;
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({
+          success: false,
+          message: 'Authorization token required',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+      token = authHeader.split(' ')[1];
     }
-
-    const token = authHeader.split(' ')[1];
     
     if (!token) {
       res.status(401).json({

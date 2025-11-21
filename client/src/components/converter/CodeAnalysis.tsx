@@ -7,6 +7,7 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
+import { auth } from '../../config/firebase'; // Add this import
 
 // Update import paths as needed. If you use CRA/Vite, place JSON in src/
 // Data now fetched from backend endpoints instead of local JSON files
@@ -20,8 +21,12 @@ interface CodeAnalysisProps {
   onStartTransformation: () => void;
   onViewReports: (data: { analysisResult: any; conversionPlanner: any }) => void;
   repositoryData?: {
-    owner: string;
-    repo: string;
+    name?: string;
+    url?: string;
+    branch?: string;
+    // Legacy format support
+    owner?: string;
+    repo?: string;
   };
 }
 
@@ -66,6 +71,15 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     setIsAnalyzing(true);
     setError(null);
     
+    // Get current user ID from Firebase
+        const currentUser = auth?.currentUser ?? null;
+        if (!currentUser) {
+          setError('User not authenticated. Please log in.');
+          setIsAnalyzing(false);
+          return;
+        }
+        const userId = currentUser.uid;
+    
     // Get repository data from localStorage or props
     let repoData = repositoryData;
     
@@ -74,10 +88,29 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       if (storedRepo) {
         try {
           const parsedRepo = JSON.parse(storedRepo);
-          repoData = {
-            owner: parsedRepo.owner?.login || parsedRepo.owner,
-            repo: parsedRepo.name || parsedRepo.repo
-          };
+          
+          // Handle new format (url-based)
+          if (parsedRepo.url) {
+            // Extract owner and repo from URL
+            const urlParts = parsedRepo.url.split('/');
+            const repoName = urlParts[urlParts.length - 1].replace('.git', '');
+            const owner = urlParts[urlParts.length - 2];
+            
+            repoData = {
+              name: parsedRepo.name || repoName,
+              url: parsedRepo.url,
+              branch: parsedRepo.branch || 'main',
+              owner: owner,
+              repo: repoName
+            };
+          } 
+          // Handle legacy format (owner/repo)
+          else if (parsedRepo.owner || parsedRepo.repo) {
+            repoData = {
+              owner: parsedRepo.owner?.login || parsedRepo.owner,
+              repo: parsedRepo.name || parsedRepo.repo
+            };
+          }
         } catch (e) {
           console.error('Failed to parse stored repository data', e);
         }
@@ -85,7 +118,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     }
     
     // Final fallback to default values
-    if (!repoData) {
+    if (!repoData || (!repoData.owner && !repoData.url)) {
       repoData = {
         owner: "Legacy-Application-Modernization",
         repo: "Blog-API-PHP"
@@ -101,7 +134,10 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
         },
         body: JSON.stringify({
           owner: repoData.owner,
-          repo: repoData.repo
+          repo: repoData.repo || repoData.name,
+          user_id: userId,
+          url: repoData.url,
+          branch: repoData.branch
         })
       });
 
@@ -124,7 +160,10 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
         },
         body: JSON.stringify({
           owner: repoData.owner,
-          repo: repoData.repo
+          repo: repoData.repo || repoData.name,
+          user_id: userId,
+          url: repoData.url,
+          branch: repoData.branch
         })
       });
 

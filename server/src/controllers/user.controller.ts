@@ -196,7 +196,6 @@ class UserController {
   async getUserStats(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.uid;
-      
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -208,7 +207,6 @@ class UserController {
 
       const userService = this.getUserService();
       const userProfile = await userService.getUserProfile(userId);
-      
       if (!userProfile) {
         res.status(404).json({
           success: false,
@@ -235,6 +233,144 @@ class UserController {
       });
     }
   }
-}
 
+  async getProjectLimits(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      const userService = this.getUserService();
+      const limitInfo = await userService.getProjectLimitInfo(userId);
+
+      res.json({
+        success: true,
+        data: limitInfo
+      });
+    } catch (error: any) {
+      console.error('Get project limits error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve project limit information',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
+    }
+  }
+
+  async checkCanCreateProject(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      const userService = this.getUserService();
+      const canCreate = await userService.canCreateProject(userId);
+
+      res.json({
+        success: true,
+        data: canCreate
+      });
+    } catch (error: any) {
+      console.error('Check can create project error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check project creation permission',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
+    }
+  }
+
+  // Admin methods
+  async updateUserRole(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const adminUserId = req.user?.uid;
+      
+      if (!adminUserId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      // Check if requester is admin
+      const userService = this.getUserService();
+      const adminProfile = await userService.getUserProfile(adminUserId);
+      
+      if (!adminProfile || adminProfile.role !== 'admin') {
+        res.status(403).json({
+          success: false,
+          message: 'Only administrators can update user roles',
+          error: 'FORBIDDEN'
+        });
+        return;
+      }
+
+      const { uid, email, role } = req.body;
+
+      if (!role || !['admin', 'manager', 'user'].includes(role)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid role. Must be: admin, manager, or user',
+          error: 'VALIDATION_ERROR'
+        });
+        return;
+      }
+
+      // Get user by UID or email
+      let targetUser = null;
+      if (uid) {
+        targetUser = await userService.getUserProfile(uid);
+      } else if (email) {
+        targetUser = await userService.getUserByEmail(email);
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'Either uid or email must be provided',
+          error: 'VALIDATION_ERROR'
+        });
+        return;
+      }
+
+      if (!targetUser) {
+        res.status(404).json({
+          success: false,
+          message: 'User not found',
+          error: 'USER_NOT_FOUND'
+        });
+        return;
+      }
+
+      const updatedUser = await userService.updateUserRole(targetUser.uid, role);
+
+      res.json({
+        success: true,
+        message: `User role updated to ${role}`,
+        data: updatedUser
+      });
+    } catch (error: any) {
+      console.error('Update user role error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update user role',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
+    }
+  }
+}
 export default UserController;

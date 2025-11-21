@@ -18,7 +18,7 @@ import CodeAnalysis from './components/converter/CodeAnalysis';
 import CodeTransformation from './components/converter/CodeTransformation';
 import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
-import GitHubCallback from './components/GitHubCallback';
+import ProjectLimitDialog from './components/common/ProjectLimitDialog';
 
 // Authentication Component
 import LoginRegister from './components/auth/LoginRegister';
@@ -26,6 +26,10 @@ import LoginRegister from './components/auth/LoginRegister';
 // Original Types and Services
 import type { FileStructure } from './types/conversion';
 import { mcpService } from './services/mcpService';
+import apiService from './services/api';
+
+// Migration utility
+import { migrateFromLocalStorage } from './utils/migration';
 
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
@@ -41,9 +45,6 @@ const AppContent: React.FC = () => {
     conversionPlanner: any;
   } | null>(null);
 
-  // Check if this is a GitHub callback
-  const isGitHubCallback = window.location.pathname === '/github-callback';
-
   // Original App State
   const [_mcpStatus, setMcpStatus] = useState<{ isConnected: boolean; sessionToken: string | null }>({ 
     isConnected: false, 
@@ -56,8 +57,20 @@ const AppContent: React.FC = () => {
 
   // transformationOptions removed (unused in this flow)
 
+  // Project limit dialog state
+  const [showProjectLimitDialog, setShowProjectLimitDialog] = useState<boolean>(false);
+  const [projectLimitInfo, setProjectLimitInfo] = useState<{ currentCount: number; maxAllowed: number } | null>(null);
+  
+  // Project limits refresh key - increment to refresh header
+  const [projectLimitsRefreshKey, setProjectLimitsRefreshKey] = useState<number>(0);
+
   // Firebase Auth Listener
   useEffect(() => {
+    // Run migration from localStorage to IndexedDB on app startup
+    migrateFromLocalStorage().catch(err => 
+      console.error('Migration failed:', err)
+    );
+
     if (!auth) {
       // Firebase not configured; skip auth listener and clear loading so app can show UI accordingly
       setAuthLoading(false);
@@ -91,22 +104,6 @@ const AppContent: React.FC = () => {
       }
     }
   }, [user]);
-
-  // Handle GitHub OAuth redirect (when popup is blocked)
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const githubAuth = urlParams.get('github_auth');
-    
-    if (githubAuth === 'success' && activeTab === 'converter') {
-      console.log('GitHub OAuth redirect detected, switching to converter tab');
-      // The UploadFiles component will handle the stored code
-    }
-  }, [activeTab]);
-
-  // If this is a GitHub callback route, render the callback component
-  if (isGitHubCallback) {
-    return <GitHubCallback />;
-  }
 
   // Show loading during auth check
   if (authLoading) {
@@ -178,11 +175,55 @@ const AppContent: React.FC = () => {
   const analyzeCode = (): void => {
     // populate reportsData if needed; currently navigate to next step
     goToStep(2);
+    // Refresh project limits after starting analysis
+    setProjectLimitsRefreshKey(prev => prev + 1);
   };
 
-  const handleNewConversion = () => {
-    // Navigate to conversion flow
-    setActiveTab("converter");
+  const handleCancelTransformation = (): void => {
+    // Clear cached transformation data from localStorage
+    try {
+      const storedRepo = localStorage.getItem('selectedRepository');
+      if (storedRepo) {
+        const parsedRepo = JSON.parse(storedRepo);
+        const repoKey = `${parsedRepo.owner?.login || parsedRepo.owner}_${parsedRepo.name || parsedRepo.repo}`;
+        const cacheKey = `cachedTransformationData_${repoKey}`;
+        localStorage.removeItem(cacheKey);
+        console.log('Cleared transformation cache for repository:', repoKey);
+      }
+      // Also remove any generic cached transformation data
+      localStorage.removeItem('cachedTransformationData');
+    } catch (error) {
+      console.error('Error clearing transformation cache:', error);
+    }
+
+    // Reset to step 1 (Upload Files)
+    setCurrentStep(1);
+    
+    // Optionally navigate to dashboard
+    // setActiveTab('dashboard');
+  };
+
+  const handleNewConversion = async () => {
+    try {
+      // Check if user can create a new project
+      const response = await apiService.checkCanCreateProject();
+
+      if (response.success && response.data.canCreate) {
+        // User can create project, navigate to converter
+        setActiveTab("converter");
+      } else {
+        // User has reached limit, show dialog
+        setProjectLimitInfo({
+          currentCount: response.data.currentCount || 0,
+          maxAllowed: response.data.maxAllowed || 2
+        });
+        setShowProjectLimitDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking project limits:', error);
+      // On error, allow navigation but log the issue
+      setActiveTab("converter");
+    }
   };
 
   // Render functions
@@ -203,12 +244,12 @@ const AppContent: React.FC = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard onNewConversion={() => setActiveTab('converter')} />;
+        return <Dashboard onNewConversion={handleNewConversion} />;
       case 'projects':
         return <Projects onNewConversion={handleNewConversion} />;
       case 'reports':
         return (
-          <Reports 
+          <Reports
             analysisResult={reportsData?.analysisResult}
             conversionPlanner={reportsData?.conversionPlanner}
             onBack={() => setActiveTab('converter')}
@@ -217,7 +258,7 @@ const AppContent: React.FC = () => {
       case 'profile':
         return <UserProfile user={user} />;
       default:
-        return <Dashboard onNewConversion={() => setActiveTab('converter')}/>;
+        return <Dashboard onNewConversion={handleNewConversion}/>;
     }
   };
 
@@ -246,6 +287,7 @@ const AppContent: React.FC = () => {
           <CodeTransformation
             onBack={() => goToStep(2)}
             onNext={() => goToStep(4)}
+            onCancelTransformation={handleCancelTransformation}
           />
         );
       case 4:
@@ -253,12 +295,21 @@ const AppContent: React.FC = () => {
           <MigrationReview
             summary={transformationSummary}
             onExportProject={() => goToStep(5)}
+            onCancelTransformation={handleCancelTransformation}
           />
         );
       case 5:
         return (
           <ExportProject
             fileStructure={fileStructure}
+            onBack={() => goToStep(4)}
+            onComplete={() => {
+              // Navigate to projects tab after successful save
+              setActiveTab('projects');
+              setCurrentStep(1);
+              // Refresh project limits
+              setProjectLimitsRefreshKey(prev => prev + 1);
+            }}
           />
         );
       default:
@@ -272,18 +323,36 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar 
-        activeTab={activeTab} 
+      <Sidebar
+        activeTab={activeTab}
         setActiveTab={(tab) => setActiveTab(tab)}
         user={user}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} />
+        <Header 
+          user={user} 
+          refreshKey={projectLimitsRefreshKey}
+          onSearch={(query) => {
+            setActiveTab('projects');
+            // You can store the search query in state if needed
+            console.log('Search query:', query);
+          }}
+        />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">
           {renderMainContent()}
         </main>
       </div>
+
+      {/* Project Limit Dialog */}
+      {projectLimitInfo && (
+        <ProjectLimitDialog
+          isOpen={showProjectLimitDialog}
+          onClose={() => setShowProjectLimitDialog(false)}
+          currentCount={projectLimitInfo.currentCount}
+          maxAllowed={projectLimitInfo.maxAllowed}
+        />
+      )}
     </div>
   );
 };

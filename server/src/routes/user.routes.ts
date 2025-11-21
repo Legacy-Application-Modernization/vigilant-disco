@@ -22,4 +22,11 @@ router.post('/initialize', userController.initializeUser.bind(userController));
 // Get user statistics
 router.get('/stats', userController.getUserStats.bind(userController));
 
+// Project limit routes
+router.get('/project-limits', userController.getProjectLimits.bind(userController));
+router.get('/can-create-project', userController.checkCanCreateProject.bind(userController));
+
+// Admin routes - update user roles
+router.put('/admin/update-role', userController.updateUserRole.bind(userController));
+
 export default router;
