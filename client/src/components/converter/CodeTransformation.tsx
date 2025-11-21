@@ -13,6 +13,7 @@ import {
   Loader2,
   XCircle
 } from 'lucide-react';
+import { auth } from '../../config/firebase';
 
 interface ConversionResult {
   source_file: string;
@@ -112,6 +113,15 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       setLoading(true);
       setError(null);
 
+      // Get current user ID from Firebase
+            const currentUser = auth?.currentUser;
+            if (!currentUser) {
+              setError('User not authenticated. Please log in.');
+              setLoading(false);
+              return;
+            }
+            const userId = currentUser.uid;
+
       // Get repository data from localStorage
       let repoData = null;
       const storedRepo = localStorage.getItem('selectedRepository');
@@ -120,7 +130,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           const parsedRepo = JSON.parse(storedRepo);
           repoData = {
             owner: parsedRepo.owner?.login || parsedRepo.owner,
-            repo: parsedRepo.name || parsedRepo.repo
+            repo: parsedRepo.name || parsedRepo.repo,
+            user_id: userId
           };
         } catch (e) {
           console.error('Failed to parse stored repository data', e);
@@ -131,9 +142,11 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       if (!repoData) {
         repoData = {
           owner: "Legacy-Application-Modernization",
-          repo: "Blog-API-PHP"
+          repo: "Blog-API-PHP",
+          user_id: userId
         };
-      }
+      } 
+      console.log(repoData);
 
       // Fetch transformation results from the server API
       try {
@@ -144,7 +157,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           },
           body: JSON.stringify({
             owner: repoData.owner,
-            repo: repoData.repo
+            repo: repoData.repo,
+            user_id: userId
           })
         });
 

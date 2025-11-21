@@ -7,6 +7,7 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
+import { auth } from '../../config/firebase'; // Add this import
 
 // Update import paths as needed. If you use CRA/Vite, place JSON in src/
 // Data now fetched from backend endpoints instead of local JSON files
@@ -70,6 +71,15 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     setIsAnalyzing(true);
     setError(null);
     
+    // Get current user ID from Firebase
+        const currentUser = auth?.currentUser ?? null;
+        if (!currentUser) {
+          setError('User not authenticated. Please log in.');
+          setIsAnalyzing(false);
+          return;
+        }
+        const userId = currentUser.uid;
+    
     // Get repository data from localStorage or props
     let repoData = repositoryData;
     
@@ -125,6 +135,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
         body: JSON.stringify({
           owner: repoData.owner,
           repo: repoData.repo || repoData.name,
+          user_id: userId,
           url: repoData.url,
           branch: repoData.branch
         })
@@ -150,6 +161,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
         body: JSON.stringify({
           owner: repoData.owner,
           repo: repoData.repo || repoData.name,
+          user_id: userId,
           url: repoData.url,
           branch: repoData.branch
         })

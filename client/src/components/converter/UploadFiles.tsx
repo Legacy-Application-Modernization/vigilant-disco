@@ -6,6 +6,7 @@ interface Repository {
   name: string;
   url: string;
   branch: string;
+  owner: string;
 }
 
 interface UploadFilesProps {
@@ -32,15 +33,21 @@ const UploadFiles: FC<UploadFilesProps> = ({
     setError(null);
 
     try {
-      // Extract repository name from URL
+      // Extract repository name and owner from URL
       const urlParts = gitUrl.trim().split('/');
       const repoName = urlParts[urlParts.length - 1].replace('.git', '');
+      const owner = urlParts[urlParts.length - 2];
+
+      if (!owner || !repoName) {
+        throw new Error('Invalid Git URL format. Expected format: https://github.com/owner/repository.git');
+      }
 
       // Store repository data in localStorage
       const repoData = {
         name: repoName,
         url: gitUrl.trim(),
         branch: branch || 'main',
+        owner: owner,
       };
 
       localStorage.setItem('selectedRepository', JSON.stringify(repoData));
@@ -180,7 +187,7 @@ const UploadFiles: FC<UploadFilesProps> = ({
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold mb-1">{importedRepo.name}</h2>
-                    <p className="text-indigo-100">{importedRepo.url}</p>
+                    <p className="text-indigo-100">{importedRepo.owner}/{importedRepo.name}</p>
                   </div>
                 </div>
                 <button
@@ -196,11 +203,17 @@ const UploadFiles: FC<UploadFilesProps> = ({
             </div>
 
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Repository URL */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Owner */}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-xs text-gray-600 mb-2 uppercase font-semibold">Repository URL</p>
-                  <p className="font-medium text-gray-900 break-all">{importedRepo.url}</p>
+                  <p className="text-xs text-gray-600 mb-2 uppercase font-semibold">Owner</p>
+                  <p className="font-medium text-gray-900">{importedRepo.owner}</p>
+                </div>
+
+                {/* Repository Name */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-xs text-gray-600 mb-2 uppercase font-semibold">Repository</p>
+                  <p className="font-medium text-gray-900">{importedRepo.name}</p>
                 </div>
 
                 {/* Branch */}
