@@ -14,6 +14,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { auth } from '../../config/firebase';
+import { backendApi } from '../../config/api';
 
 interface ConversionResult {
   source_file: string;
@@ -150,26 +151,14 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
       // Fetch transformation results from the server API
       try {
-        const res = await fetch('http://127.0.0.1:8000/convert_codebase', { 
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            owner: repoData.owner,
-            repo: repoData.repo,
-            user_id: userId
-          })
+        const res = await backendApi.post('/migration/convert_codebase', {
+          owner: repoData.owner,
+          repo: repoData.repo,
+          user_id: userId
         });
 
-        if (!res.ok) {
-          const body = await res.text().catch(() => '');
-          throw new Error(`Server error: ${res.status} ${res.statusText} ${body}`);
-        }
-
-        const json = await res.json();
         // Extract converted_code from the response
-        const data = json.converted_code || json;
+        const data = res.data.converted_code || res.data;
         setTransformationData(data);
         
         // Cache the data in localStorage with repository-specific key

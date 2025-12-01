@@ -7,13 +7,13 @@ import {
   FileText,
   AlertCircle
 } from 'lucide-react';
-import { auth } from '../../config/firebase'; // Add this import
+import { auth } from '../../config/firebase';
+import { backendApi } from '../../config/api';
 
-// Update import paths as needed. If you use CRA/Vite, place JSON in src/
 // Data now fetched from backend endpoints instead of local JSON files
 // Endpoints used:
-//  - http://127.0.0.1:8000/analyze_repository
-//  - http://127.0.0.1:8000/conversion_plan
+//  - /analysis/analyze_repository
+//  - /migration/create_migration_plan
 
 interface CodeAnalysisProps {
   projectId?: string;
@@ -127,53 +127,31 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
 
     try {
       // Step 1: Call analyze_repository first
-      const analysisRes = await fetch('http://127.0.0.1:8000/analyze_repository', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          owner: repoData.owner,
-          repo: repoData.repo || repoData.name,
-          user_id: userId,
-          url: repoData.url,
-          branch: repoData.branch
-        })
+      const analysisRes = await backendApi.post('/analysis/analyze_repository', {
+        owner: repoData.owner,
+        repo: repoData.repo || repoData.name,
+        user_id: userId,
+        url: repoData.url,
+        branch: repoData.branch
       });
 
-      if (!analysisRes.ok) {
-        throw new Error('Analysis server responded with an error');
-      }
-
-      const analysisJson = await analysisRes.json();
       // Extract the analysis object from the response
-      const analysisData = analysisJson.analysis || analysisJson;
+      const analysisData = analysisRes.data.analysis || analysisRes.data;
       setAnalysisResult(analysisData);
       // Cache the data in localStorage
       localStorage.setItem('cachedAnalysisResult', JSON.stringify(analysisData));
 
-      // Step 2: Wait for analysis to complete, then call conversion_plan
-      const plannerRes = await fetch('http://127.0.0.1:8000/conversion_plan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          owner: repoData.owner,
-          repo: repoData.repo || repoData.name,
-          user_id: userId,
-          url: repoData.url,
-          branch: repoData.branch
-        })
+      // Step 2: Wait for analysis to complete, then call create_migration_plan
+      const plannerRes = await backendApi.post('/migration/create_migration_plan', {
+        owner: repoData.owner,
+        repo: repoData.repo || repoData.name,
+        user_id: userId,
+        url: repoData.url,
+        branch: repoData.branch
       });
 
-      if (!plannerRes.ok) {
-        throw new Error('Conversion plan server responded with an error');
-      }
-
-      const plannerJson = await plannerRes.json();
       // Extract the conversion_plan object from the response
-      const plannerData = plannerJson.conversion_plan || plannerJson;
+      const plannerData = plannerRes.data.conversion_plan || plannerRes.data;
       setConversionPlanner(plannerData);
       // Cache the data in localStorage
       localStorage.setItem('cachedConversionPlanner', JSON.stringify(plannerData));

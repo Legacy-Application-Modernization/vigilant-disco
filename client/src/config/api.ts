@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// Main API (Node.js backend)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
+// Backend API (Python/FastAPI) for analysis and conversion
+const BACKEND_API_URL = import.meta.env.VITE_BACKEND_API_URL || 'http://127.0.0.1:8000';
+
+// Main API instance (Node.js backend)
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -10,12 +15,33 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+// Backend API instance (Python/FastAPI)
+export const backendApi = axios.create({
+  baseURL: BACKEND_API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: false,
+});
+
+// Request interceptor for main API
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Request interceptor for backend API
+backendApi.interceptors.request.use(
+  (config) => {
+    // Add any backend-specific headers here if needed
     return config;
   },
   (error) => {
@@ -48,6 +74,18 @@ api.interceptors.response.use(
       }
     }
     
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for backend API
+backendApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle backend-specific errors
+    if (error.response) {
+      console.error('Backend API Error:', error.response.data);
+    }
     return Promise.reject(error);
   }
 );

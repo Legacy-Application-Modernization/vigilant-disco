@@ -5,12 +5,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        VITE_BACKEND_API_URL: ${VITE_BACKEND_API_URL:-http://127.0.0.1:8000}
+        VITE_APP_ENV: ${VITE_APP_ENV:-production}
+        VITE_MCP_API_URL: ${VITE_MCP_API_URL:-http://localhost:3001}
+        VITE_MCP_API_KEY: ${VITE_MCP_API_KEY:-dev-key}
+        VITE_ENABLE_ANALYTICS: ${VITE_ENABLE_ANALYTICS:-false}
     ports:
       - "8080:80"
     restart: unless-stopped
     # For production with a reverse proxy like Traefik, you can add:
     # labels:
     #  - "traefik.enable=true"
-    #  - "traefik.http.routers.vigilant-disco-client.rule=Host(`yourdomainname.com`)"
+    #  - "traefik.http.routers.vigilant-disco-client.rule=Host(`yourdomainname.com`)`"
     #  - "traefik.http.routers.vigilant-disco-client.entrypoints=websecure"
     #  - "traefik.http.routers.vigilant-disco-client.tls.certresolver=letsencrypt"
