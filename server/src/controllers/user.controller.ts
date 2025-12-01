@@ -196,7 +196,6 @@ class UserController {
   async getUserStats(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const userId = req.user?.uid;
-
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -208,7 +207,6 @@ class UserController {
 
       const userService = this.getUserService();
       const userProfile = await userService.getUserProfile(userId);
-
       if (!userProfile) {
         res.status(404).json({
           success: false,
