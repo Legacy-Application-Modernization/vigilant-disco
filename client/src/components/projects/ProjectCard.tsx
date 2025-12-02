@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { Download, Settings, Trash2, Eye } from 'lucide-react';
+import { Download, Settings, Trash2 } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -20,7 +20,7 @@ interface ProjectCardProps {
   onUpdate?: (projectId: string, data: any) => void;
 }
 
-const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
+const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete }) => {
   const getStatusBadge = (status: string) => {
     const statusStyles = {
       planning: 'bg-blue-100 text-blue-800',
@@ -36,27 +36,9 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, onUpdate }) => {
     );
   };
 
-  const getProgressPercentage = (status: string) => {
-    const progressMap = {
-      planning: 25,
-      'in-progress': 65,
-      completed: 100,
-      archived: 100
-    };
-    return progressMap[status as keyof typeof progressMap] || 0;
-  };
-
-  const progress = getProgressPercentage(project.status);
-
   const handleDelete = () => {
     if (onDelete) {
       onDelete(project.id);
-    }
-  };
-
-  const handleStatusChange = (newStatus: string) => {
-    if (onUpdate) {
-      onUpdate(project.id, { status: newStatus });
     }
   };
 
