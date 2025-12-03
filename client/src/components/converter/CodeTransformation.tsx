@@ -151,7 +151,7 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
       // Fetch transformation results from the server API
       try {
-        const res = await backendApi.post('/migration/convert_codebase', {
+        const res = await backendApi.post('/migration/migrate_codebase', {
           owner: repoData.owner,
           repo: repoData.repo,
           user_id: userId
