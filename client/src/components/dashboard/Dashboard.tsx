@@ -125,7 +125,7 @@ return res.json(users);`}
             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <Edit size={20} />
             </div>
-            <h3 className="font-medium">4. Review & Edit</h3>
+            <h3 className="font-medium">4. Export</h3>
             <p className="text-gray-500 text-sm mt-1">Validate and refine the code</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg text-center">

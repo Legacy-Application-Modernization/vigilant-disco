@@ -16,7 +16,6 @@ import ConversionStepper from './components/converter/ConversionStepper';
 import UploadFiles from './components/converter/UploadFiles';
 import CodeAnalysis from './components/converter/CodeAnalysis';
 import CodeTransformation from './components/converter/CodeTransformation';
-import MigrationReview from './components/converter/MigrationReview';
 import ExportProject from './components/converter/ExportProject';
 import ProjectLimitDialog from './components/common/ProjectLimitDialog';
 
@@ -53,6 +52,7 @@ const AppContent: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([1]); // Step 1 is always accessible
   // analysisResults state removed (unused) - reports use `reportsData` instead
 
   // transformationOptions removed (unused in this flow)
@@ -139,16 +139,6 @@ const AppContent: React.FC = () => {
     return <LoginRegister />;
   }
 
-  // sample codeTransformation removed (not used)
-
-  const transformationSummary = {
-    filesConverted: 12,
-    linesOfCode: 1247,
-    coverage: 100,
-    errors: 0,
-    confidence: 85
-  };
-
   const fileStructure: FileStructure[] = [
     { name: 'my-nodejs-app/', type: 'folder', level: 0 },
     { name: 'src/', type: 'folder', level: 1 },
@@ -167,14 +157,21 @@ const AppContent: React.FC = () => {
 
   // Helper functions
   const goToStep = (step: number): void => {
-    if (step >= 1 && step <= 5) {
+    // Only allow navigation to completed steps or the current step
+    if (step >= 1 && step <= 4 && (completedSteps.includes(step) || step === currentStep)) {
       setCurrentStep(step);
     }
   };
 
   const analyzeCode = (): void => {
-    // populate reportsData if needed; currently navigate to next step
-    goToStep(2);
+    // Mark step 1 as completed and enable step 2
+    setCompletedSteps(prev => {
+      const updated = new Set(prev);
+      updated.add(1);
+      updated.add(2);
+      return Array.from(updated);
+    });
+    setCurrentStep(2);
     // Refresh project limits after starting analysis
     setProjectLimitsRefreshKey(prev => prev + 1);
   };
@@ -198,6 +195,8 @@ const AppContent: React.FC = () => {
 
     // Reset to step 1 (Upload Files)
     setCurrentStep(1);
+    // Reset completed steps to only step 1
+    setCompletedSteps([1]);
     
     // Optionally navigate to dashboard
     // setActiveTab('dashboard');
@@ -232,7 +231,7 @@ const AppContent: React.FC = () => {
       return (
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-5">
-            <ConversionStepper currentStep={currentStep} onStepClick={goToStep} />
+            <ConversionStepper currentStep={currentStep} completedSteps={completedSteps} onStepClick={goToStep} />
           </div>
 
           <div className="bg-white rounded-xl shadow-lg flex-grow overflow-hidden">
@@ -275,7 +274,16 @@ const AppContent: React.FC = () => {
           <CodeAnalysis
             projectId="current"
             onBack={() => goToStep(1)}
-            onStartTransformation={() => goToStep(3)}
+            onStartTransformation={() => {
+              setCompletedSteps(prev => {
+                const updated = new Set(prev);
+                updated.add(1);
+                updated.add(2);
+                updated.add(3);
+                return Array.from(updated);
+              });
+              setCurrentStep(3);
+            }}
             onViewReports={(data) => {
               setReportsData(data);
               setActiveTab('reports');
@@ -286,27 +294,30 @@ const AppContent: React.FC = () => {
         return (
           <CodeTransformation
             onBack={() => goToStep(2)}
-            onNext={() => goToStep(4)}
+            onNext={() => {
+              setCompletedSteps(prev => {
+                const updated = new Set(prev);
+                updated.add(1);
+                updated.add(2);
+                updated.add(3);
+                updated.add(4);
+                return Array.from(updated);
+              });
+              setCurrentStep(4);
+            }}
             onCancelTransformation={handleCancelTransformation}
           />
         );
       case 4:
         return (
-          <MigrationReview
-            summary={transformationSummary}
-            onExportProject={() => goToStep(5)}
-            onCancelTransformation={handleCancelTransformation}
-          />
-        );
-      case 5:
-        return (
           <ExportProject
             fileStructure={fileStructure}
-            onBack={() => goToStep(4)}
+            onBack={() => goToStep(3)}
             onComplete={() => {
               // Navigate to projects tab after successful save
               setActiveTab('projects');
               setCurrentStep(1);
+              setCompletedSteps([1]); // Reset to initial state
               // Refresh project limits
               setProjectLimitsRefreshKey(prev => prev + 1);
             }}

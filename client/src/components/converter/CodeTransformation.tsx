@@ -21,6 +21,7 @@ interface ConversionResult {
   target_file: string;
   source_code: string;
   converted_code: string;
+  dependencies?: string[];
   success: boolean;
   error?: string;
 }
@@ -77,6 +78,9 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
     return null;
   });
   const [loading, setLoading] = useState(true);
+  const [processingPhases, setProcessingPhases] = useState(false); // Start as false, will be set to true when fetching starts
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const [totalPhases, setTotalPhases] = useState(0);
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
   const [improvingFiles, setImprovingFiles] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +92,7 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
     if (transformationData) {
       console.log('Using cached transformation data');
       setLoading(false);
+      setProcessingPhases(false); // Mark processing as complete
       return;
     }
 
@@ -115,13 +120,13 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       setError(null);
 
       // Get current user ID from Firebase
-            const currentUser = auth?.currentUser;
-            if (!currentUser) {
-              setError('User not authenticated. Please log in.');
-              setLoading(false);
-              return;
-            }
-            const userId = currentUser.uid;
+      const currentUser = auth?.currentUser;
+      if (!currentUser) {
+        setError('User not authenticated. Please log in.');
+        setLoading(false);
+        return;
+      }
+      const userId = currentUser.uid;
 
       // Get repository data from localStorage
       let repoData = null;
@@ -146,38 +151,123 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           repo: "Blog-API-PHP",
           user_id: userId
         };
-      } 
-      console.log(repoData);
+      }
 
-      // Fetch transformation results from the server API
-      try {
-        const res = await backendApi.post('/migration/migrate_codebase', {
-          owner: repoData.owner,
-          repo: repoData.repo,
-          user_id: userId
-        });
+      // Get conversion planner to know how many phases to process
+      const cachedPlanner = localStorage.getItem('cachedConversionPlanner');
+      if (!cachedPlanner) {
+        setError('No conversion plan found. Please complete the analysis first.');
+        setLoading(false);
+        return;
+      }
 
-        // Extract converted_code from the response
-        const data = res.data.converted_code || res.data;
-        setTransformationData(data);
-        
-        // Cache the data in localStorage with repository-specific key
-        const repoKey = `${repoData.owner}_${repoData.repo}`;
-        const cacheKey = `cachedTransformationData_${repoKey}`;
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-        console.log('Cached transformation data for repository:', repoKey);
-      } catch (err: any) {
-        console.error('Failed to fetch transformation data:', err);
-        // Only set error if it's not an abort error
-        if (err.name !== 'AbortError') {
-          setError('Failed to load transformation data. Please try again.');
+      const conversionPlanner = JSON.parse(cachedPlanner);
+      const phases = conversionPlanner.phases || [];
+      
+      if (phases.length === 0) {
+        setError('No phases found in conversion plan.');
+        setLoading(false);
+        return;
+      }
+
+      console.log(`Starting migration for ${phases.length} phases...`);
+      setTotalPhases(phases.length);
+      setProcessingPhases(true); // Now we're actually processing
+      setLoading(false); // Stop initial loading to show progressive results
+
+      // Collect all phase results
+      const allPhaseResults: PhaseResult[] = [];
+      const allDependencies = new Set<string>();
+
+      // Call migrate_codebase for each phase
+      for (let i = 0; i < phases.length; i++) {
+        const phase = phases[i];
+        const phaseNumber = i; // Start from 0
+
+        setCurrentPhase(phaseNumber + 1); // Display 1-based for user
+        console.log(`Processing Phase ${phaseNumber}: ${phase.name}`);
+
+        try {
+          const res = await backendApi.post('/migration/migrate_codebase', {
+            owner: repoData.owner,
+            repo: repoData.repo,
+            user_id: userId,
+            phase_num: phaseNumber
+          });
+
+          // Extract migrated_code from the response
+          const migratedData = res.data.migrated_code;
+          
+          if (migratedData && migratedData.phaseresults) {
+            const phaseResult = migratedData.phaseresults;
+            
+            // Add to aggregated results
+            allPhaseResults.push(phaseResult);
+
+            // Collect dependencies from conversion results
+            if (phaseResult.conversion_results) {
+              phaseResult.conversion_results.forEach((result: ConversionResult) => {
+                if (result.dependencies) {
+                  result.dependencies.forEach((dep: string) => allDependencies.add(dep));
+                }
+              });
+            }
+
+            console.log(`✓ Phase ${phaseNumber} completed: ${phaseResult.files_converted} files converted`);
+
+            // Update state immediately to display this phase's results
+            setTransformationData({
+              phaseresults: [...allPhaseResults],
+              dependencies: Array.from(allDependencies)
+            });
+          }
+        } catch (err: any) {
+          console.error(`Failed to migrate phase ${phaseNumber}:`, err);
+          // Continue with other phases even if one fails
+          const errorResult: PhaseResult = {
+            phase_number: phaseNumber,
+            phase_name: phase.name,
+            files_converted: 0,
+            conversion_results: [{
+              source_file: 'N/A',
+              target_file: 'N/A',
+              source_code: '',
+              converted_code: '',
+              success: false,
+              error: `Phase ${phaseNumber} migration failed: ${err.message || 'Unknown error'}`
+            }]
+          };
+          allPhaseResults.push(errorResult);
+          
+          // Update state to show error for this phase
+          setTransformationData({
+            phaseresults: [...allPhaseResults],
+            dependencies: Array.from(allDependencies)
+          });
         }
       }
+
+      // Build final transformation data
+      const finalData: TransformationData = {
+        phaseresults: allPhaseResults,
+        dependencies: Array.from(allDependencies)
+      };
+
+      setTransformationData(finalData);
+      setProcessingPhases(false);
+      
+      // Cache the data in localStorage with repository-specific key
+      const repoKey = `${repoData.owner}_${repoData.repo}`;
+      const cacheKey = `cachedTransformationData_${repoKey}`;
+      localStorage.setItem(cacheKey, JSON.stringify(finalData));
+      console.log('✓ Cached transformation data for repository:', repoKey);
+      console.log(`✓ Migration complete: ${allPhaseResults.length} phases processed`);
+
     } catch (err) {
       setError('Failed to load transformation data. Please try again.');
       console.error('Error fetching transformation:', err);
-    } finally {
       setLoading(false);
+      setProcessingPhases(false);
     }
   };
 
@@ -265,19 +355,19 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       <div className="flex items-center justify-center min-h-[500px]">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mx-auto mb-4" />
-          <p className="text-gray-600">Transforming your code...</p>
+          <p className="text-gray-600">Initializing code transformation...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !transformationData) {
+  if (error && !transformationData) {
     return (
       <div className="p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-red-900 mb-2">Transformation Failed</h3>
-          <p className="text-red-700 mb-4">{error || 'Unable to load transformation data'}</p>
+          <p className="text-red-700 mb-4">{error}</p>
           <button
             onClick={fetchTransformationData}
             className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
@@ -289,64 +379,132 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
     );
   }
 
+  // If still processing and no data yet, show loading with progress
+  if (processingPhases && !transformationData) {
+    return (
+      <div className="p-8">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Code Transformation In Progress</h2>
+          <p className="text-gray-600">
+            Processing phase {currentPhase} of {totalPhases}... Please wait while we transform your code.
+          </p>
+        </div>
+        
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span className="text-sm font-medium text-blue-900">
+                Processing Phase {currentPhase} of {totalPhases}
+              </span>
+            </div>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-500 animate-pulse"
+              style={{ width: `${(currentPhase / totalPhases) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+          <Loader2 className="w-16 h-16 animate-spin text-indigo-500 mx-auto mb-4" />
+          <p className="text-gray-700 font-medium">Transforming your PHP code to Node.js...</p>
+          <p className="text-gray-500 text-sm mt-2">This may take a few minutes depending on your codebase size.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-2">Code Transformation Complete</h2>
-        <p className="text-gray-600">Review the converted files and their transformations</p>
+        <h2 className="text-2xl font-bold mb-2">Code Transformation {processingPhases ? 'In Progress' : 'Complete'}</h2>
+        <p className="text-gray-600">
+          {processingPhases 
+            ? `Processing phase ${currentPhase} of ${totalPhases}... Results will appear as each phase completes.`
+            : 'Review the converted files and their transformations'
+          }
+        </p>
       </div>
 
-      {/* Statistics Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Files</p>
-              <p className="text-2xl font-bold text-gray-900">{getTotalFiles()}</p>
+      {/* Progress Indicator */}
+      {processingPhases && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span className="text-sm font-medium text-blue-900">
+                Processing Phase {currentPhase} of {totalPhases}
+              </span>
             </div>
-            <File className="w-8 h-8 text-indigo-500" />
+            <span className="text-sm text-blue-700">
+              {transformationData?.phaseresults.length || 0} phase{(transformationData?.phaseresults.length || 0) !== 1 ? 's' : ''} completed
+            </span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+              style={{ width: `${((transformationData?.phaseresults.length || 0) / totalPhases) * 100}%` }}
+            />
           </div>
         </div>
+      )}
 
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Success Rate</p>
-              <p className="text-2xl font-bold text-emerald-600">{getSuccessRate()}%</p>
+      {/* Show results if we have any data */}
+      {transformationData && transformationData.phaseresults.length > 0 && (
+        <>
+          {/* Statistics Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Total Files</p>
+                  <p className="text-2xl font-bold text-gray-900">{getTotalFiles()}</p>
+                </div>
+                <File className="w-8 h-8 text-indigo-500" />
+              </div>
             </div>
-            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+
+            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Success Rate</p>
+                  <p className="text-2xl font-bold text-emerald-600">{getSuccessRate()}%</p>
+                </div>
+                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Phases</p>
+                  <p className="text-2xl font-bold text-gray-900">{transformationData.phaseresults.length}</p>
+                </div>
+                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+                  {transformationData.phaseresults.length}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Dependencies</p>
+                  <p className="text-2xl font-bold text-gray-900">{transformationData.dependencies.length}</p>
+                </div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {transformationData.dependencies.slice(0, 2).join(', ')}
+                  {transformationData.dependencies.length > 2 && '...'}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Phases</p>
-              <p className="text-2xl font-bold text-gray-900">{transformationData.phaseresults.length}</p>
-            </div>
-            <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-              {transformationData.phaseresults.length}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Dependencies</p>
-              <p className="text-2xl font-bold text-gray-900">{transformationData.dependencies.length}</p>
-            </div>
-            <div className="text-xs text-gray-600 mt-1">
-              {transformationData.dependencies.slice(0, 2).join(', ')}
-              {transformationData.dependencies.length > 2 && '...'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Phase Results */}
-      <div className="space-y-6 mb-8">
-        {transformationData.phaseresults.map((phase) => (
+          {/* Phase Results */}
+          <div className="space-y-6 mb-8">
+            {transformationData.phaseresults.map((phase) => (
           <div key={phase.phase_number} className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-4 border-b border-gray-200 bg-gray-50">
               <div className="flex items-center justify-between">
@@ -522,7 +680,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
         <div className="flex space-x-3">
           <button
             onClick={downloadAllFiles}
-            className="px-6 py-2 border border-indigo-500 text-indigo-500 rounded-md hover:bg-indigo-50 transition-colors flex items-center"
+            disabled={processingPhases}
+            className="px-6 py-2 border border-indigo-500 text-indigo-500 rounded-md hover:bg-indigo-50 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download size={18} className="mr-2" />
             Download All Files
@@ -530,12 +689,24 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
           <button
             onClick={onNext}
-            className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center"
+            disabled={processingPhases}
+            className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Review & Export <ChevronRight size={18} className="ml-1" />
+            {processingPhases ? (
+              <>
+                <Loader2 size={18} className="mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                Export <ChevronRight size={18} className="ml-1" />
+              </>
+            )}
           </button>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };
