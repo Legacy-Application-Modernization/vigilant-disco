@@ -60,7 +60,7 @@ const Header: React.FC<HeaderProps> = ({ user, refreshKey, onSearch }) => {
   const fetchNotifications = async () => {
     try {
       setLoadingNotifications(true);
-      const response = await apiService.getProjects();
+      const response = await apiService.getUserProjects();
       if (response.success && response.data) {
         // Convert projects to notifications
         const projectNotifications: ProjectNotification[] = response.data

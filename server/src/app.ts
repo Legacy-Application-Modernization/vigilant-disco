@@ -33,7 +33,10 @@ class App {
       firebase.initialize();
     } catch (error) {
       console.error('Failed to initialize Firebase:', error);
-      process.exit(1);
+      // Don't exit in serverless environments (Vercel)
+      if (process.env.VERCEL !== '1') {
+        process.exit(1);
+      }
     }
   }
 

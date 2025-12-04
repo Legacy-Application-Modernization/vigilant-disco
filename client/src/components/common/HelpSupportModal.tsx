@@ -31,7 +31,7 @@ const HelpSupportModal: FC<HelpSupportModalProps> = ({ isOpen, onClose }) => {
     setSubmitStatus('idle');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/support/contact`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/v1/support/contact`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
