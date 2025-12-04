@@ -91,38 +91,6 @@ This starts:
 
 ---
 
-### 1️⃣ EC2 Instance Setup
-
-#### Connect to EC2
-```bash
-ssh -i your-key.pem ubuntu@ec2-100-26-196-182.compute-1.amazonaws.com
-```
-
-#### Install Dependencies
-```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Install PM2 (Process Manager)
-sudo npm install -g pm2
-
-# Logout and login again for docker group to take effect
-exit
-```
-
 ### 2️⃣ Deploy Application
 
 #### Clone Repository
