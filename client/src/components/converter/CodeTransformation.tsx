@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import { backendApi } from '../../config/api';
+import { usePhaseNotifications } from '../../contexts/PhaseNotificationContext';
 
 interface ConversionResult {
   source_file: string;
@@ -49,6 +50,8 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
   onNext,
   onCancelTransformation
 }) => {
+  const { addNotification } = usePhaseNotifications();
+  
   // Initialize state from localStorage if available
   const [transformationData, setTransformationData] = useState<TransformationData | null>(() => {
     // Get current repository info
@@ -182,17 +185,19 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       // Call migrate_codebase for each phase
       for (let i = 0; i < phases.length; i++) {
         const phase = phases[i];
-        const phaseNumber = i; // Start from 0
+        const phaseNumber = i + 1; // Start from 1
+        const isLastPhase = i === phases.length - 1;
 
-        setCurrentPhase(phaseNumber + 1); // Display 1-based for user
-        console.log(`Processing Phase ${phaseNumber}: ${phase.name}`);
+        setCurrentPhase(phaseNumber); // Display phase number (1-based)
+        console.log(`Processing Phase ${phaseNumber}: ${phase.name}${isLastPhase ? ' (final phase)' : ''}`);
 
         try {
           const res = await backendApi.post('/migration/migrate_codebase', {
             owner: repoData.owner,
             repo: repoData.repo,
             user_id: userId,
-            phase_num: phaseNumber
+            phase_num: phaseNumber,
+            is_last_phase: isLastPhase
           });
 
           // Extract migrated_code from the response
@@ -214,6 +219,13 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
             }
 
             console.log(`✓ Phase ${phaseNumber} completed: ${phaseResult.files_converted} files converted`);
+
+            // Add phase completion notification
+            addNotification({
+              phase_number: phaseNumber,
+              phase_name: phaseResult.phase_name,
+              repository: `${repoData.owner}/${repoData.repo}`
+            });
 
             // Update state immediately to display this phase's results
             setTransformationData({

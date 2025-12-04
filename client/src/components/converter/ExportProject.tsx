@@ -1,5 +1,5 @@
 import { useState, type FC } from 'react';
-import { Archive, Link as LinkIcon, Server, Cloud, ChevronLeft, CheckCircle, Loader2 } from 'lucide-react';
+import { Archive, Link as LinkIcon, Server, Cloud, ChevronLeft, CheckCircle, Loader2, Download } from 'lucide-react';
 import type { FileStructure } from '../../types/conversion';
 import apiService from '../../services/api';
 
@@ -13,6 +13,8 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
 
   const handleSaveProject = async () => {
     setIsSaving(true);
@@ -60,6 +62,7 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
 
       if (response.success) {
         setSuccess(true);
+        setSavedProjectId(response.data.id);
         console.log('Project saved successfully:', response.data);
         
         // Call onComplete callback after a short delay to show success message
@@ -76,6 +79,40 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
       setError(err.response?.data?.message || err.message || 'Failed to save project');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDownloadProject = async () => {
+    if (!savedProjectId) {
+      setError('Please save the project first before downloading');
+      return;
+    }
+
+    setIsDownloading(true);
+    setError(null);
+
+    try {
+      // Get download URL from backend
+      const response = await apiService.downloadProject(savedProjectId);
+
+      if (response.success && response.data.downloadUrl) {
+        // Create a temporary anchor element to trigger download
+        const link = document.createElement('a');
+        link.href = response.data.downloadUrl;
+        link.download = response.data.fileName || 'project.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log('Download initiated:', response.data);
+      } else {
+        throw new Error(response.message || 'Failed to get download URL');
+      }
+    } catch (err: any) {
+      console.error('Failed to download project:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to download project from S3');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -128,8 +165,20 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
           </div>
           <h3 className="font-semibold mb-2">Download ZIP</h3>
           <p className="text-sm text-gray-500 mb-4">Complete project with all dependencies and configuration files</p>
-          <button className="mt-auto bg-white text-indigo-500 border border-indigo-500 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors w-full">
-            Download
+          <button 
+            onClick={handleDownloadProject}
+            disabled={isDownloading || !savedProjectId}
+            className="mt-auto bg-white text-indigo-500 border border-indigo-500 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 size={16} className="mr-1 animate-spin" /> Downloading...
+              </>
+            ) : (
+              <>
+                <Download size={16} className="mr-1" /> {savedProjectId ? 'Download' : 'Save First'}
+              </>
+            )}
           </button>
         </div>
         

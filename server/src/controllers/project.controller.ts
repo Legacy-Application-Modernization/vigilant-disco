@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import ProjectService, { CreateProjectData, UpdateProjectData } from '../services/project.service';
+import s3Service from '../services/s3.service';
 import Joi from 'joi';
 
 const projectService = new ProjectService();
@@ -526,6 +527,90 @@ class ProjectController {
         message: 'Failed to validate Git URL',
         error: 'INTERNAL_SERVER_ERROR'
       });
+    }
+  }
+
+  // GET /api/projects/:id/download - Download project from S3
+  async downloadProject(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+      const projectId = req.params.id;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      // Get project to verify ownership and get metadata
+      const project = await projectService.getProject(projectId, userId);
+
+      if (!project) {
+        res.status(404).json({
+          success: false,
+          message: 'Project not found',
+          error: 'NOT_FOUND'
+        });
+        return;
+      }
+
+      // Extract S3 information from project metadata
+      // Structure: userID/ownerName/zipFile
+      const metadata = project.metadata as any;
+      const repositoryUrl = metadata?.repositoryUrl || '';
+      
+      // Extract owner name from repository URL
+      let ownerName = 'default';
+      if (repositoryUrl) {
+        const urlParts = repositoryUrl.split('/');
+        ownerName = urlParts[urlParts.length - 2] || 'default';
+      }
+
+      // Use encrypted userId as folder name (you might have this stored in user profile)
+      // For now, using the Firebase UID
+      const encryptedUserId = userId;
+      
+      // Default file name pattern: ProjectName-API-Language.zip
+      // e.g., "Blog-API-PHP.zip"
+      const fileName = `${project.name.replace(/\s+/g, '-')}-API-${project.sourceLanguage}.zip`;
+
+      // Generate presigned URL for download
+      const downloadUrl = await s3Service.getDownloadUrl(
+        encryptedUserId,
+        ownerName,
+        fileName,
+        3600 // URL expires in 1 hour
+      );
+
+      res.json({
+        success: true,
+        message: 'Download URL generated successfully',
+        data: {
+          downloadUrl,
+          fileName,
+          expiresIn: 3600,
+          s3Path: `${encryptedUserId}/${ownerName}/${fileName}`
+        }
+      });
+    } catch (error: any) {
+      console.error('Download project error:', error);
+      
+      if (error.message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message: 'Project file not found in storage',
+          error: 'FILE_NOT_FOUND'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to generate download URL',
+          error: 'INTERNAL_SERVER_ERROR'
+        });
+      }
     }
   }
 }

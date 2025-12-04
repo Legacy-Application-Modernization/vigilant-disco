@@ -24,6 +24,9 @@ router.post('/:id/notes', projectController.addProjectNote.bind(projectControlle
 // Project tags
 router.get('/by-tag/:tag', projectController.getProjectsByTag.bind(projectController));
 
+// Project download from S3
+router.get('/:id/download', projectController.downloadProject.bind(projectController));
+
 // Git URL validation
 router.post('/validate-git-url', projectController.validateGitUrl.bind(projectController));
 

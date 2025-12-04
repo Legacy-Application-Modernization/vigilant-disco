@@ -136,6 +136,10 @@ class ApiService {
   async getProjectsByTag(tag: string): Promise<any> {
     return this.request('GET', `/api/v1/projects/by-tag/${tag}`);
   }
+
+  async downloadProject(projectId: string): Promise<any> {
+    return this.request('GET', `/api/v1/projects/${projectId}/download`);
+  }
 }
 
 export default new ApiService();

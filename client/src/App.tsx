@@ -4,6 +4,7 @@ import { auth } from './firebase/config';
 
 // Auth Context
 import { AuthProvider } from './contexts/AuthContext';
+import { PhaseNotificationProvider } from './contexts/PhaseNotificationContext';
 
 // Original Components
 import Header from './components/layout/Header';
@@ -395,7 +396,9 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <AppContent />
+      <PhaseNotificationProvider>
+        <AppContent />
+      </PhaseNotificationProvider>
     </AuthProvider>
   );
 };
