@@ -91,13 +91,6 @@ This starts:
 
 ---
 
-## ☁️ EC2 Production Deployment
-
-### Prerequisites
-- AWS EC2 instance (Ubuntu 20.04+ recommended)
-- Domain name (optional)
-- SSH access to EC2
-
 ### 1️⃣ EC2 Instance Setup
 
 #### Connect to EC2
