@@ -1,7 +1,7 @@
 // src/components/layout/Header.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { type User } from 'firebase/auth';
-import { Folder } from 'lucide-react';
+import { Folder, Bell, CheckCircle, Clock, XCircle } from 'lucide-react';
 import apiService from '../../services/api';
 
 interface HeaderProps {
@@ -16,16 +16,73 @@ interface ProjectLimits {
   role: string;
 }
 
+interface ProjectNotification {
+  id: string;
+  name: string;
+  status: 'completed' | 'in-progress' | 'archived' | 'draft' | 'planning';
+  updatedAt: string;
+  type: 'success' | 'pending' | 'failed';
+}
+
 const Header: React.FC<HeaderProps> = ({ user, refreshKey, onSearch }) => {
   const [projectLimits, setProjectLimits] = useState<ProjectLimits | null>(null);
   const [loadingLimits, setLoadingLimits] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<ProjectNotification[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) {
       fetchProjectLimits();
+      fetchNotifications();
     }
   }, [user, refreshKey]); // Re-fetch when refreshKey changes
+
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const response = await apiService.getProjects();
+      if (response.success && response.data) {
+        // Convert projects to notifications
+        const projectNotifications: ProjectNotification[] = response.data
+          .slice(0, 10) // Last 10 projects
+          .map((project: any) => ({
+            id: project.id,
+            name: project.name,
+            status: project.status,
+            updatedAt: project.updatedAt,
+            type: 
+              project.status === 'completed' ? 'success' :
+              project.status === 'archived' ? 'failed' :
+              'pending'
+          }));
+        setNotifications(projectNotifications);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
   const fetchProjectLimits = async () => {
     try {
@@ -141,12 +198,124 @@ const Header: React.FC<HeaderProps> = ({ user, refreshKey, onSearch }) => {
             )}
 
             {/* Notifications */}
-            <button className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-full">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white"></span>
-            </button>
+            <div className="relative" ref={notificationRef}>
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-full transition-colors"
+              >
+                <Bell className="h-6 w-6" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-0 right-0 flex h-5 w-5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex items-center justify-center rounded-full h-5 w-5 bg-red-500 text-white text-xs font-bold">
+                      {notifications.length > 9 ? '9+' : notifications.length}
+                    </span>
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[500px] overflow-hidden flex flex-col">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                    <h3 className="text-sm font-semibold text-gray-900">Project Notifications</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">Recent project status updates</p>
+                  </div>
+
+                  {/* Notifications List */}
+                  <div className="overflow-y-auto flex-1">
+                    {loadingNotifications ? (
+                      <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                        <p className="text-sm text-gray-500 mt-2">Loading notifications...</p>
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="p-8 text-center">
+                        <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-sm text-gray-500">No notifications yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Project updates will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {notifications.map((notification) => {
+                          const Icon = 
+                            notification.type === 'success' ? CheckCircle :
+                            notification.type === 'failed' ? XCircle :
+                            Clock;
+                          
+                          const iconColor = 
+                            notification.type === 'success' ? 'text-green-500' :
+                            notification.type === 'failed' ? 'text-red-500' :
+                            'text-yellow-500';
+                          
+                          const bgColor = 
+                            notification.type === 'success' ? 'bg-green-50' :
+                            notification.type === 'failed' ? 'bg-red-50' :
+                            'bg-yellow-50';
+
+                          const statusText = 
+                            notification.type === 'success' ? 'Completed' :
+                            notification.type === 'failed' ? 'Failed' :
+                            'In Progress';
+
+                          return (
+                            <div 
+                              key={notification.id}
+                              className="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-start space-x-3">
+                                <div className={`flex-shrink-0 w-10 h-10 ${bgColor} rounded-full flex items-center justify-center`}>
+                                  <Icon className={`h-5 w-5 ${iconColor}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {notification.name}
+                                  </p>
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <span className={`
+                                      inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                      ${notification.type === 'success' 
+                                        ? 'bg-green-100 text-green-800' 
+                                        : notification.type === 'failed'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-yellow-100 text-yellow-800'
+                                      }
+                                    `}>
+                                      {statusText}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {new Date(notification.updatedAt).toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+                      <button 
+                        onClick={() => setShowNotifications(false)}
+                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium w-full text-center"
+                      >
+                        View all notifications
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* User Avatar and Info */}
             {user && (

@@ -1,6 +1,7 @@
 import FirebaseConfig from '../config/firebase';
 import { FieldValue } from 'firebase-admin/firestore';
 import UserService from './user.service';
+import EmailService from './email.service';
 
 export interface Project {
   id: string;
@@ -67,9 +68,11 @@ export interface UpdateProjectData {
 class ProjectService {
   private projectsCollection = 'projects';
   private userService: UserService;
+  private emailService: EmailService;
 
   constructor() {
     this.userService = new UserService();
+    this.emailService = new EmailService();
   }
 
   // Lazy initialization - get firestore when needed
@@ -207,6 +210,11 @@ class ProjectService {
       throw new Error('Project not found or access denied');
     }
 
+    // Track if status is changing
+    const statusChanged = updateData.settings?.conversionNotes !== undefined && 
+                          existingProject.status !== updateData.settings.conversionNotes;
+    const oldStatus = existingProject.status;
+
     const updatePayload: any = {
       ...updateData,
       updatedAt: FieldValue.serverTimestamp()
@@ -236,7 +244,65 @@ class ProjectService {
       throw new Error('Failed to retrieve updated project');
     }
 
+    // Send email notification if status changed to completed, failed, or in-progress
+    if (updatedProject.status !== oldStatus) {
+      this.sendStatusChangeNotification(userId, updatedProject, oldStatus).catch(err => {
+        console.error('Failed to send status notification email:', err);
+      });
+    }
+
     return updatedProject;
+  }
+
+  private async sendStatusChangeNotification(
+    userId: string, 
+    project: Project, 
+    oldStatus: string
+  ): Promise<void> {
+    try {
+      // Get user details
+      const user = await this.userService.getUserProfile(userId);
+      if (!user || !user.email) {
+        return;
+      }
+
+      // Only send notifications for significant status changes
+      const notifiableStatuses = ['completed', 'archived', 'in-progress'];
+      if (!notifiableStatuses.includes(project.status)) {
+        return;
+      }
+
+      // Map status to notification type
+      const emailStatus: 'completed' | 'in-progress' | 'failed' = 
+        project.status === 'completed' ? 'completed' :
+        project.status === 'archived' ? 'failed' :
+        'in-progress';
+
+      const statusDetails = this.getStatusDetails(project.status, oldStatus);
+
+      await this.emailService.sendProjectStatusNotification(user.email, {
+        userName: user.displayName || user.email.split('@')[0],
+        projectName: project.name,
+        status: emailStatus,
+        projectUrl: `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/projects/${project.id}`,
+        statusDetails,
+      });
+    } catch (error) {
+      console.error('Error sending status change notification:', error);
+      // Don't throw - email failures shouldn't block the update
+    }
+  }
+
+  private getStatusDetails(newStatus: string, oldStatus: string): string {
+    const statusMessages: Record<string, string> = {
+      'completed': 'Your project has been successfully completed and is ready for download.',
+      'in-progress': 'Your project is currently being processed. We\'ll notify you when it\'s complete.',
+      'planning': 'Your project planning phase has started. We\'re analyzing your code structure.',
+      'archived': 'Your project encountered an issue during processing. Please review the project details.',
+      'draft': 'Your project has been saved as a draft.',
+    };
+
+    return statusMessages[newStatus] || `Project status changed from ${oldStatus} to ${newStatus}.`;
   }
 
   async deleteProject(projectId: string, userId: string): Promise<void> {
@@ -257,6 +323,8 @@ class ProjectService {
       throw new Error('Project not found or access denied');
     }
 
+    const oldStatus = project.status;
+
     await this.getFirestore()
       .collection(this.projectsCollection)
       .doc(projectId)
@@ -264,6 +332,14 @@ class ProjectService {
         status,
         updatedAt: FieldValue.serverTimestamp()
       });
+
+    // Send email notification if status changed
+    if (status !== oldStatus) {
+      const updatedProject = { ...project, status };
+      this.sendStatusChangeNotification(userId, updatedProject, oldStatus).catch(err => {
+        console.error('Failed to send status notification email:', err);
+      });
+    }
   }
 
   async addProjectNote(projectId: string, userId: string, note: string): Promise<void> {

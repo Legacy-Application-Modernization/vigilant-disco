@@ -1,13 +1,11 @@
 import type { FC } from 'react';
 import { 
-  ChevronRight, 
   FileText, 
   Code, 
   Activity, 
   Server, 
   Check,
   ArrowRight,
-  Edit,
   Loader2,
   AlertCircle
 } from 'lucide-react';
@@ -92,14 +90,11 @@ return res.json(users);`}
       
       {/* Process Visualization */}
       <div className="bg-white rounded-xl shadow p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="mb-6">
           <h2 className="text-xl font-bold text-gray-900">How It Works</h2>
-          <button className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center">
-            Learn More <ChevronRight className="ml-1 h-4 w-4" />
-          </button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-gray-50 p-4 rounded-lg text-center">
             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <FileText size={20} />
@@ -123,16 +118,9 @@ return res.json(users);`}
           </div>
           <div className="bg-gray-50 p-4 rounded-lg text-center">
             <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Edit size={20} />
-            </div>
-            <h3 className="font-medium">4. Export</h3>
-            <p className="text-gray-500 text-sm mt-1">Validate and refine the code</p>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-lg text-center">
-            <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <Server size={20} />
             </div>
-            <h3 className="font-medium">5. Export</h3>
+            <h3 className="font-medium">4. Export</h3>
             <p className="text-gray-500 text-sm mt-1">Download or deploy your project</p>
           </div>
         </div>
