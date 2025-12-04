@@ -3,6 +3,7 @@ import userRoutes from './user.routes';
 import projectRoutes from './project.routes';
 import healthRoutes from './health.routes';
 import githubRoutes from './github.routes';
+import supportRoutes from './support.routes';
 const router = Router();
 
 // Health check routes (no prefix needed)
@@ -12,6 +13,7 @@ router.use('/health', healthRoutes);
 router.use('/users', userRoutes);
 router.use('/projects', projectRoutes);
 router.use('/github', githubRoutes);
+router.use('/support', supportRoutes);
 // API info route
 router.get('/', (req, res) => {
   res.json({
@@ -23,8 +25,8 @@ router.get('/', (req, res) => {
       users: '/api/v1/users',
       projects: '/api/v1/projects',
       health: '/health',
-      github: '/api/v1/github'
-
+      github: '/api/v1/github',
+      support: '/api/v1/support'
     },
     features: [
       'User Management',

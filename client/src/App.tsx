@@ -18,6 +18,7 @@ import CodeAnalysis from './components/converter/CodeAnalysis';
 import CodeTransformation from './components/converter/CodeTransformation';
 import ExportProject from './components/converter/ExportProject';
 import ProjectLimitDialog from './components/common/ProjectLimitDialog';
+import HelpSupportModal from './components/common/HelpSupportModal';
 
 // Authentication Component
 import LoginRegister from './components/auth/LoginRegister';
@@ -64,6 +65,9 @@ const AppContent: React.FC = () => {
   // Project limits refresh key - increment to refresh header
   const [projectLimitsRefreshKey, setProjectLimitsRefreshKey] = useState<number>(0);
 
+  // Help & Support modal state
+  const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
+
   // Firebase Auth Listener
   useEffect(() => {
     // Run migration from localStorage to IndexedDB on app startup
@@ -104,6 +108,13 @@ const AppContent: React.FC = () => {
       }
     }
   }, [user]);
+
+  // Open Help & Support modal when help tab is selected
+  useEffect(() => {
+    if (activeTab === 'help') {
+      setShowHelpModal(true);
+    }
+  }, [activeTab]);
 
   // Show loading during auth check
   if (authLoading) {
@@ -364,6 +375,18 @@ const AppContent: React.FC = () => {
           maxAllowed={projectLimitInfo.maxAllowed}
         />
       )}
+
+      {/* Help & Support Modal */}
+      <HelpSupportModal
+        isOpen={showHelpModal}
+        onClose={() => {
+          setShowHelpModal(false);
+          // Return to dashboard when modal is closed
+          if (activeTab === 'help') {
+            setActiveTab('dashboard');
+          }
+        }}
+      />
     </div>
   );
 };
