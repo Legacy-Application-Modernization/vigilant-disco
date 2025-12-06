@@ -1,7 +1,6 @@
 import { useState, type FC } from 'react';
-import { Archive, Link as LinkIcon, Server, Cloud, ChevronLeft, CheckCircle, Loader2, Download } from 'lucide-react';
+import { Archive, Link as LinkIcon, Server, Cloud, ChevronLeft, CheckCircle, Loader2 } from 'lucide-react';
 import type { FileStructure } from '../../types/conversion';
-import apiService from '../../services/api';
 
 interface ExportProjectProps {
   fileStructure: FileStructure[];
@@ -13,112 +12,39 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
 
   const handleSaveProject = async () => {
     setIsSaving(true);
     setError(null);
 
     try {
-      // Get repository data from localStorage
-      const storedRepo = localStorage.getItem('selectedRepository');
-      const analysisResult = localStorage.getItem('cachedAnalysisResult');
-      const conversionPlanner = localStorage.getItem('cachedConversionPlanner');
-      const transformationData = localStorage.getItem('cachedTransformationData');
-
-      let repoData: any = {};
-      if (storedRepo) {
-        repoData = JSON.parse(storedRepo);
-      }
-
-      // Prepare project data
-      const projectData = {
-        name: repoData.name || 'PHP to Node.js Migration',
-        description: `Migrated from ${repoData.url || 'PHP project'}`,
-        sourceLanguage: 'PHP',
-        targetLanguage: 'Node.js',
-        status: 'completed',
-        tags: ['migration', 'php', 'nodejs'],
-        settings: {
-          preserveComments: true,
-          modernizePatterns: true,
-          optimizeCode: true,
-          addDocumentation: true,
-          conversionNotes: `Repository: ${repoData.url || 'N/A'}\nBranch: ${repoData.branch || 'main'}`
-        },
-        metadata: {
-          repositoryUrl: repoData.url,
-          branch: repoData.branch || 'main',
-          analysisResult: analysisResult ? JSON.parse(analysisResult) : null,
-          conversionPlanner: conversionPlanner ? JSON.parse(conversionPlanner) : null,
-          transformationData: transformationData ? JSON.parse(transformationData) : null,
-          fileStructure: fileStructure
+      // Project creation is now handled by code-agent-service
+      // Just mark as saving and navigate to projects section
+      console.log('Project saved by code-agent-service');
+      
+      setSuccess(true);
+      
+      // Store a flag to indicate project was just saved
+      localStorage.setItem('projectJustSaved', 'true');
+      localStorage.setItem('projectSavedAt', Date.now().toString());
+      
+      // Call onComplete callback after a short delay to show success message
+      setTimeout(() => {
+        if (onComplete) {
+          onComplete();
         }
-      };
-
-      // Call API to create project
-      const response = await apiService.createProject(projectData);
-
-      if (response.success) {
-        setSuccess(true);
-        setSavedProjectId(response.data.id);
-        console.log('Project saved successfully:', response.data);
-        
-        // Call onComplete callback after a short delay to show success message
-        setTimeout(() => {
-          if (onComplete) {
-            onComplete();
-          }
-        }, 1500);
-      } else {
-        throw new Error(response.message || 'Failed to save project');
-      }
+      }, 1500);
     } catch (err: any) {
       console.error('Failed to save project:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to save project');
+      setError(err.message || 'Failed to save project');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDownloadProject = async () => {
-    if (!savedProjectId) {
-      setError('Please save the project first before downloading');
-      return;
-    }
-
-    setIsDownloading(true);
-    setError(null);
-
-    try {
-      // Get download URL from backend
-      const response = await apiService.downloadProject(savedProjectId);
-
-      if (response.success && response.data.downloadUrl) {
-        // Create a temporary anchor element to trigger download
-        const link = document.createElement('a');
-        link.href = response.data.downloadUrl;
-        link.download = response.data.fileName || 'project.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        console.log('Download initiated:', response.data);
-      } else {
-        throw new Error(response.message || 'Failed to get download URL');
-      }
-    } catch (err: any) {
-      console.error('Failed to download project:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to download project from S3');
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold mb-6">Export Your Node.js Project</h2>
+      <h2 className="text-2xl font-bold mb-6">Save & Export Your Node.js Project</h2>
       
       {/* Success Message */}
       {success && (
@@ -127,7 +53,7 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
             <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
             <div>
               <h3 className="text-sm font-medium text-green-800">Project Saved Successfully!</h3>
-              <p className="mt-1 text-sm text-green-700">Your project has been saved to your account.</p>
+              <p className="mt-1 text-sm text-green-700">Redirecting to Projects section where you can download your project...</p>
             </div>
           </div>
         </div>
@@ -158,28 +84,16 @@ const ExportProject: FC<ExportProjectProps> = ({ fileStructure, onBack, onComple
       
       {/* Export Options */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Download ZIP */}
+        {/* Download ZIP - Now available from Projects section */}
         <div className="border border-gray-200 rounded-lg p-6 flex flex-col items-center text-center">
           <div className="bg-indigo-100 p-4 rounded-full mb-4">
             <Archive size={32} className="text-indigo-500" />
           </div>
           <h3 className="font-semibold mb-2">Download ZIP</h3>
-          <p className="text-sm text-gray-500 mb-4">Complete project with all dependencies and configuration files</p>
-          <button 
-            onClick={handleDownloadProject}
-            disabled={isDownloading || !savedProjectId}
-            className="mt-auto bg-white text-indigo-500 border border-indigo-500 px-4 py-2 rounded-md hover:bg-indigo-50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 size={16} className="mr-1 animate-spin" /> Downloading...
-              </>
-            ) : (
-              <>
-                <Download size={16} className="mr-1" /> {savedProjectId ? 'Download' : 'Save First'}
-              </>
-            )}
-          </button>
+          <p className="text-sm text-gray-500 mb-4">Save your project and download from the Projects section</p>
+          <div className="mt-auto text-xs text-gray-400 italic">
+            Available after saving
+          </div>
         </div>
         
         {/* GitHub Repository */}

@@ -536,6 +536,13 @@ class ProjectController {
       const userId = req.user?.uid;
       const projectId = req.params.id;
 
+      console.log('Download request received:', {
+        projectId,
+        userId,
+        path: req.path,
+        fullUrl: req.originalUrl
+      });
+
       if (!userId) {
         res.status(401).json({
           success: false,
@@ -549,37 +556,79 @@ class ProjectController {
       const project = await projectService.getProject(projectId, userId);
 
       if (!project) {
+        console.log('Project not found:', { projectId, userId });
         res.status(404).json({
           success: false,
-          message: 'Project not found',
+          message: 'Project not found or you do not have access to this project',
           error: 'NOT_FOUND'
         });
         return;
       }
 
-      // Extract S3 information from project metadata
-      // Structure: userID/ownerName/zipFile
-      const metadata = project.metadata as any;
-      const repositoryUrl = metadata?.repositoryUrl || '';
-      
-      // Extract owner name from repository URL
-      let ownerName = 'default';
-      if (repositoryUrl) {
-        const urlParts = repositoryUrl.split('/');
-        ownerName = urlParts[urlParts.length - 2] || 'default';
-      }
+      console.log('Project data from Firestore:', {
+        id: project.id,
+        name: project.name,
+        userId: project.userId,
+        owner: project.owner,
+        repo: project.repo,
+        sourceLanguage: project.sourceLanguage,
+        hasOwner: !!project.owner,
+        hasRepo: !!project.repo,
+        repositoryUrl: project.metadata?.repositoryUrl
+      });
 
-      // Use encrypted userId as folder name (you might have this stored in user profile)
-      // For now, using the Firebase UID
-      const encryptedUserId = userId;
+      // Extract S3 information from project
+      // S3 Structure: userId/ownerName/filename.zip
+      // The userId should come from the project document (user_id field in Firestore)
+      // NOT from the authenticated user's token
+      // Example: 0JEGH9KEOjNOA7usjdjNlMd5go42/Legacy-Application-Modernization/Blog-API-PHP.zip
       
-      // Default file name pattern: ProjectName-API-Language.zip
-      // e.g., "Blog-API-PHP.zip"
-      const fileName = `${project.name.replace(/\s+/g, '-')}-API-${project.sourceLanguage}.zip`;
+      // Support both userId (Node.js format) and user_id (FastAPI format)
+      const s3UserId = (project as any).user_id || project.userId;
+      
+      // Try to get owner and repo from project fields first
+      // If not available, extract from repositoryUrl
+      let ownerName = project.owner;
+      let repoName = project.repo;
+      
+      if (!ownerName || !repoName) {
+        const repositoryUrl = project.metadata?.repositoryUrl;
+        if (repositoryUrl) {
+          try {
+            const urlParts = repositoryUrl.replace(/\.git$/, '').split('/');
+            if (urlParts.length >= 2) {
+              repoName = repoName || urlParts[urlParts.length - 1];
+              ownerName = ownerName || urlParts[urlParts.length - 2];
+              console.log('Extracted from repositoryUrl:', { ownerName, repoName, repositoryUrl });
+            }
+          } catch (e) {
+            console.error('Error parsing repository URL:', e);
+          }
+        }
+      }
+      
+      // Fallback to defaults if still not available
+      ownerName = ownerName || 'default';
+      repoName = repoName || project.name.replace(/\s+/g, '-');
+      
+      // File name is just the repo name with .zip extension
+      // The repo name already includes the format like "Blog-API-PHP"
+      const fileName = `${repoName}.zip`;
+      
+      console.log('Download request:', {
+        projectId,
+        projectName: project.name,
+        s3UserId,
+        authenticatedUserId: userId,
+        owner: ownerName,
+        repo: repoName,
+        fileName,
+        s3Path: `${s3UserId}/${ownerName}/${fileName}`
+      });
 
       // Generate presigned URL for download
       const downloadUrl = await s3Service.getDownloadUrl(
-        encryptedUserId,
+        s3UserId,
         ownerName,
         fileName,
         3600 // URL expires in 1 hour
@@ -592,7 +641,9 @@ class ProjectController {
           downloadUrl,
           fileName,
           expiresIn: 3600,
-          s3Path: `${encryptedUserId}/${ownerName}/${fileName}`
+          s3Path: `${s3UserId}/${ownerName}/${fileName}`,
+          owner: ownerName,
+          repo: repoName
         }
       });
     } catch (error: any) {
@@ -611,6 +662,76 @@ class ProjectController {
           error: 'INTERNAL_SERVER_ERROR'
         });
       }
+    }
+  }
+
+  // PATCH /api/projects/:id/migrate-s3-fields - Migrate owner/repo fields from repositoryUrl
+  async migrateS3Fields(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.uid;
+      const projectId = req.params.id;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+          error: 'UNAUTHORIZED'
+        });
+        return;
+      }
+
+      const project = await projectService.getProject(projectId, userId);
+
+      if (!project) {
+        res.status(404).json({
+          success: false,
+          message: 'Project not found',
+          error: 'NOT_FOUND'
+        });
+        return;
+      }
+
+      // Extract owner and repo from repositoryUrl if not already set
+      let owner = project.owner;
+      let repo = project.repo;
+
+      if (!owner || !repo) {
+        const repositoryUrl = project.metadata?.repositoryUrl;
+        if (repositoryUrl) {
+          try {
+            const urlParts = repositoryUrl.replace(/\.git$/, '').split('/');
+            if (urlParts.length >= 2) {
+              repo = repo || urlParts[urlParts.length - 1];
+              owner = owner || urlParts[urlParts.length - 2];
+            }
+          } catch (e) {
+            console.error('Error parsing repository URL:', e);
+          }
+        }
+      }
+
+      // Update project with owner and repo
+      const updatedProject = await projectService.updateProject(projectId, userId, {
+        owner,
+        repo
+      });
+
+      res.json({
+        success: true,
+        message: 'Project S3 fields migrated successfully',
+        data: {
+          id: updatedProject.id,
+          owner: updatedProject.owner,
+          repo: updatedProject.repo
+        }
+      });
+    } catch (error: any) {
+      console.error('Migrate S3 fields error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to migrate S3 fields',
+        error: 'INTERNAL_SERVER_ERROR'
+      });
     }
   }
 }

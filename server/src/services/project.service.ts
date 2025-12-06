@@ -14,6 +14,8 @@ export interface Project {
   createdAt: Date;
   updatedAt: Date;
   settings: ProjectSettings;
+  owner?: string;
+  repo?: string;
   metadata?: {
     estimatedComplexity?: 'low' | 'medium' | 'high';
     notes?: string;
@@ -44,6 +46,8 @@ export interface CreateProjectData {
   status?: 'planning' | 'in-progress' | 'completed' | 'archived';
   settings?: Partial<ProjectSettings>;
   tags?: string[];
+  owner?: string;
+  repo?: string;
   metadata?: {
     repositoryUrl?: string;
     branch?: string;
@@ -62,6 +66,8 @@ export interface UpdateProjectData {
   description?: string;
   targetLanguage?: string;
   settings?: Partial<ProjectSettings>;
+  owner?: string;
+  repo?: string;
   metadata?: Partial<Project['metadata']>;
 }
 
@@ -125,6 +131,8 @@ class ProjectService {
       createdAt: now,
       updatedAt: now,
       settings: defaultSettings,
+      owner: projectData.owner,
+      repo: projectData.repo,
       metadata
     };
 
@@ -150,7 +158,8 @@ class ProjectService {
 
     const data = doc.data();
     
-    if (userId && data?.userId !== userId) {
+    // Check both userId (Node.js backend format) and user_id (FastAPI backend format)
+    if (userId && data?.userId !== userId && data?.user_id !== userId) {
       return null;
     }
 

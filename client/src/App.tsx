@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import { type User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase/config';
 
+// Error Boundary
+import ErrorBoundary from './components/common/ErrorBoundary';
+
 // Auth Context
 import { AuthProvider } from './contexts/AuthContext';
 import { PhaseNotificationProvider } from './contexts/PhaseNotificationContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 // Original Components
 import Header from './components/layout/Header';
@@ -188,30 +192,42 @@ const AppContent: React.FC = () => {
     setProjectLimitsRefreshKey(prev => prev + 1);
   };
 
-  const handleCancelTransformation = (): void => {
-    // Clear cached transformation data from localStorage
+  const handleCancelTransformation = async (): Promise<void> => {
     try {
-      const storedRepo = localStorage.getItem('selectedRepository');
-      if (storedRepo) {
-        const parsedRepo = JSON.parse(storedRepo);
-        const repoKey = `${parsedRepo.owner?.login || parsedRepo.owner}_${parsedRepo.name || parsedRepo.repo}`;
-        const cacheKey = `cachedTransformationData_${repoKey}`;
-        localStorage.removeItem(cacheKey);
-        console.log('Cleared transformation cache for repository:', repoKey);
+      // Get the current project ID
+      const projectId = localStorage.getItem('currentProjectId');
+      
+      if (projectId) {
+        // Delete the project from the backend
+        try {
+          await apiService.deleteProject(projectId);
+          console.log('Project deleted successfully:', projectId);
+        } catch (error) {
+          console.error('Error deleting project from backend:', error);
+          // Continue with local cleanup even if backend delete fails
+        }
       }
-      // Also remove any generic cached transformation data
-      localStorage.removeItem('cachedTransformationData');
+
+      // Clear only non-persistent localStorage items (data comes from DB)
+      // Keep: phase_notifications (needed for notifications)
+      localStorage.removeItem('currentProjectId');
+      localStorage.removeItem('selectedRepository');
+      localStorage.removeItem('failedPhases');
+      localStorage.removeItem('projectJustSaved');
+      localStorage.removeItem('projectsSavedAt');
+      
+      console.log('Transformation data cleared');
     } catch (error) {
-      console.error('Error clearing transformation cache:', error);
+      console.error('Error during transformation cancellation:', error);
     }
 
     // Reset to step 1 (Upload Files)
     setCurrentStep(1);
-    // Reset completed steps to only step 1
-    setCompletedSteps([1]);
+    // Reset completed steps to empty
+    setCompletedSteps([]);
     
-    // Optionally navigate to dashboard
-    // setActiveTab('dashboard');
+    // Refresh project limits
+    setProjectLimitsRefreshKey(prev => prev + 1);
   };
 
   const handleNewConversion = async () => {
@@ -392,14 +408,18 @@ const AppContent: React.FC = () => {
   );
 };
 
-// Main App Component with AuthProvider
+// Main App Component with AuthProvider and Error Boundary
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <PhaseNotificationProvider>
-        <AppContent />
-      </PhaseNotificationProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <PhaseNotificationProvider>
+            <AppContent />
+          </PhaseNotificationProvider>
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 };
 

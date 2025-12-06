@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import backendService from '../services/backend.service';
 import apiService from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -8,62 +9,70 @@ export const useProjects = () => {
   const [error, setError] = useState<string | null>(null);
   const { currentUser } = useAuth();
 
-  const fetchProjects = async (params?: any) => {
+  const fetchProjects = async () => {
     if (!currentUser) return;
     
     try {
       setLoading(true);
       setError(null);
-      const response = await apiService.getUserProjects(params);
+      const response = await backendService.getUserProjects(currentUser.uid);
+      console.log('📦 Projects Response:', response);
+      console.log('📦 Response.projects:', response.projects);
+      console.log('📦 Response type:', typeof response);
+      
       if (response.success) {
-        setProjects(response.data);
+        const projectList = response.projects || [];
+        console.log('📦 Setting projects:', projectList);
+        setProjects(projectList);
+      } else if (Array.isArray(response)) {
+        // Handle case where response is directly an array
+        console.log('📦 Response is array, setting directly');
+        setProjects(response);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch projects');
+      console.error('❌ Fetch projects error:', err);
+      setError(err.userMessage || err.message || 'Failed to fetch projects');
     } finally {
       setLoading(false);
     }
   };
 
-  const createProject = async (projectData: any) => {
+  const createProject = async (_projectData: any) => {
     try {
-      const response = await apiService.createProject(projectData);
-      if (response.success) {
-        await fetchProjects(); // Refresh the list
-        return response.data;
-      }
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to create project');
-    }
-  };
-
-  const updateProject = async (projectId: string, updateData: any) => {
-    try {
-      const response = await apiService.updateProject(projectId, updateData);
-      if (response.success) {
-        await fetchProjects(); // Refresh the list
-        return response.data;
-      }
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update project');
-    }
-  };
-
-  const deleteProject = async (projectId: string) => {
-    try {
-      await apiService.deleteProject(projectId);
+      // Projects are created via analyze_repository in UploadFiles component
+      // This is a placeholder for future direct project creation
       await fetchProjects(); // Refresh the list
     } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to delete project');
+      throw new Error(err.userMessage || err.message || 'Failed to create project');
     }
   };
 
-  const updateProjectStatus = async (projectId: string, status: string) => {
+  const updateProject = async (_projectId: string, _updateData: any) => {
     try {
-      await apiService.updateProjectStatus(projectId, status);
+      // FastAPI backend doesn't have a generic update endpoint yet
+      // Updates happen through specific endpoints (analyze, plan, migrate)
       await fetchProjects(); // Refresh the list
     } catch (err: any) {
-      throw new Error(err.response?.data?.message || 'Failed to update project status');
+      throw new Error(err.userMessage || err.message || 'Failed to update project');
+    }
+  };
+
+  const deleteProject = async (_projectId: string) => {
+    try {
+      // Use Node.js backend (port 3001) for delete operation
+      await apiService.deleteProject(_projectId);
+      await fetchProjects(); // Refresh the list
+    } catch (err: any) {
+      throw new Error(err.userMessage || err.message || 'Failed to delete project');
+    }
+  };
+
+  const updateProjectStatus = async (_projectId: string, _status: string) => {
+    try {
+      // Status updates happen automatically through FastAPI backend operations
+      await fetchProjects(); // Refresh the list
+    } catch (err: any) {
+      throw new Error(err.userMessage || err.message || 'Failed to update project status');
     }
   };
 

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { FC } from 'react';
-import { ChevronRight, GitBranch, Loader2 } from 'lucide-react';
+import { ChevronRight, GitBranch, Loader2, CheckCircle } from 'lucide-react';
+import { auth } from '../../config/firebase';
+import backendService from '../../services/backend.service';
+import ErrorDisplay from '../common/ErrorDisplay';
 
 interface Repository {
   name: string;
@@ -19,10 +22,12 @@ const UploadFiles: FC<UploadFilesProps> = ({
   const [gitUrl, setGitUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [isImporting, setIsImporting] = useState(false);
+  const [isCheckingExisting, setIsCheckingExisting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importedRepo, setImportedRepo] = useState<Repository | null>(null);
+  const [existingProject, setExistingProject] = useState<any>(null);
 
-  // Handle Git URL import
+  // Handle Git URL import and check for existing project
   const handleGitImport = async () => {
     if (!gitUrl.trim()) {
       setError('Please enter a Git repository URL');
@@ -31,8 +36,14 @@ const UploadFiles: FC<UploadFilesProps> = ({
 
     setIsImporting(true);
     setError(null);
+    setExistingProject(null);
 
     try {
+      const user = auth?.currentUser;
+      if (!user) {
+        throw new Error('Please log in to continue');
+      }
+
       // Extract repository name and owner from URL
       const urlParts = gitUrl.trim().split('/');
       const repoName = urlParts[urlParts.length - 1].replace('.git', '');
@@ -42,22 +53,128 @@ const UploadFiles: FC<UploadFilesProps> = ({
         throw new Error('Invalid Git URL format. Expected format: https://github.com/owner/repository.git');
       }
 
-      // Store repository data in localStorage
-      const repoData = {
-        name: repoName,
-        url: gitUrl.trim(),
-        branch: branch || 'main',
-        owner: owner,
-      };
+      const projectName = `${owner}/${repoName}`;
 
-      localStorage.setItem('selectedRepository', JSON.stringify(repoData));
-      setImportedRepo(repoData);
-      
+      // Check if project already exists in Firebase
+      setIsCheckingExisting(true);
+      console.log('Checking for existing project:', projectName);
+
+      try {
+        const projectsResponse = await backendService.getUserProjects(user.uid);
+        
+        // Find project matching this repository URL
+        const existingProj = projectsResponse.projects?.find(
+          (proj: any) => proj.repository_url === gitUrl.trim() || proj.project_name === projectName
+        );
+
+        if (existingProj) {
+          console.log('Found existing project:', existingProj);
+          setExistingProject(existingProj);
+
+          // Load existing project data into cache
+          await loadExistingProjectData(existingProj);
+
+          setImportedRepo({
+            name: repoName,
+            url: gitUrl.trim(),
+            branch: branch || 'main',
+            owner: owner,
+          });
+        } else {
+          console.log('No existing project found, will create new one');
+          // Store repository data in localStorage for new project
+          const repoData = {
+            name: repoName,
+            url: gitUrl.trim(),
+            branch: branch || 'main',
+            owner: owner,
+          };
+
+          localStorage.setItem('selectedRepository', JSON.stringify(repoData));
+          setImportedRepo(repoData);
+        }
+      } catch (err: any) {
+        console.warn('Error checking for existing project:', err);
+        // Continue with new project flow if check fails
+        const repoData = {
+          name: repoName,
+          url: gitUrl.trim(),
+          branch: branch || 'main',
+          owner: owner,
+        };
+
+        localStorage.setItem('selectedRepository', JSON.stringify(repoData));
+        setImportedRepo(repoData);
+      } finally {
+        setIsCheckingExisting(false);
+      }
+
       setIsImporting(false);
     } catch (err) {
       console.error('Git import error:', err);
       setError(err instanceof Error ? err.message : 'Failed to process Git URL');
       setIsImporting(false);
+      setIsCheckingExisting(false);
+    }
+  };
+
+  // Load existing project data into localStorage cache
+  const loadExistingProjectData = async (project: any) => {
+    try {
+      console.log('Loading existing project data into cache...');
+
+      // Store repository info for UI continuity
+      const repoData = {
+        name: project.project_name?.split('/')[1] || project.repo,
+        url: project.repository_url,
+        branch: 'main',
+        owner: project.project_name?.split('/')[0] || project.owner,
+      };
+      localStorage.setItem('selectedRepository', JSON.stringify(repoData));
+
+      // Store only essential data needed for the session
+      // Keep selectedRepository for UI continuity
+      // Keep currentProjectId for API calls
+      // Keep failedPhases for retry functionality
+      // Data itself comes from DB, no need to cache it in localStorage
+
+      // Detect failed phases for retry functionality
+      if (project.migrated_code && Array.isArray(project.migrated_code)) {
+        const phaseResults = project.migrated_code
+          .map((phase: any) => phase.phaseresults)
+          .filter(Boolean)
+          .filter((result: any) => result && typeof result === 'object');
+
+        const failedPhases = phaseResults
+          .filter((result: any) => {
+            // Check if this phase has valid data
+            if (!result || typeof result !== 'object') return false;
+            
+            // Check for zero files converted
+            if (result.files_converted === 0) return true;
+            
+            // Check for failed conversions (only if conversion_results exists)
+            if (result.conversion_results && Array.isArray(result.conversion_results)) {
+              return result.conversion_results.some((cr: any) => !cr?.success);
+            }
+            
+            return false;
+          })
+          .map((result: any) => result.phase_number)
+          .filter((num: any) => typeof num === 'number');
+
+        if (failedPhases.length > 0) {
+          console.warn('⚠️ Found failed phases:', failedPhases);
+          localStorage.setItem('failedPhases', JSON.stringify(failedPhases));
+        }
+      }
+
+      // Store project ID for API calls
+      localStorage.setItem('currentProjectId', project.id);
+
+      console.log('✓ Existing project loaded from database');
+    } catch (err) {
+      console.error('Error loading existing project data:', err);
     }
   };
 
@@ -90,23 +207,43 @@ const UploadFiles: FC<UploadFilesProps> = ({
     <div className="p-8">
       {/* Error Alert */}
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <ErrorDisplay 
+          error={error}
+          title="Import Error"
+          onDismiss={() => setError(null)}
+          variant="error"
+        />
+      )}
+
+      {/* Existing Project Found Alert */}
+      {existingProject && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
           <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
+            <CheckCircle className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-green-800">Existing Project Found!</h3>
+              <p className="mt-1 text-sm text-green-700">
+                We found an existing project for this repository. 
+                Your previous analysis and migration data have been loaded.
+              </p>
+              <div className="mt-2 text-xs text-green-600">
+                <div>Status: <span className="font-medium">{existingProject.status}</span></div>
+                <div>Last updated: {new Date(existingProject.updated_at).toLocaleString()}</div>
+              </div>
             </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error</h3>
-              <p className="mt-1 text-sm text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Checking Existing Project Loading */}
+      {isCheckingExisting && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <Loader2 className="h-5 w-5 text-blue-400 animate-spin mr-3" />
+            <div>
+              <h3 className="text-sm font-medium text-blue-800">Checking for existing project...</h3>
+              <p className="text-sm text-blue-700">Please wait while we search for your repository data.</p>
             </div>
-            <button
-              onClick={() => setError(null)}
-              className="ml-auto text-red-400 hover:text-red-600 text-xl px-2"
-            >
-              ×
-            </button>
           </div>
         </div>
       )}

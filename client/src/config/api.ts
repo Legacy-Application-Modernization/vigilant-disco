@@ -78,14 +78,65 @@ api.interceptors.response.use(
   }
 );
 
-// Response interceptor for backend API
+// Response interceptor for backend API with comprehensive error handling
 backendApi.interceptors.response.use(
   (response) => response,
   (error) => {
     // Handle backend-specific errors
     if (error.response) {
-      console.error('Backend API Error:', error.response.data);
+      const status = error.response.status;
+      const data = error.response.data;
+      
+      console.error('Backend API Error:', {
+        status,
+        url: error.config?.url,
+        data,
+      });
+
+      // Create user-friendly error message
+      let errorMessage = 'An unexpected error occurred';
+      
+      switch (status) {
+        case 400:
+          errorMessage = data?.detail || data?.message || 'Invalid request. Please check your input.';
+          break;
+        case 401:
+          errorMessage = 'Authentication required. Please log in.';
+          break;
+        case 403:
+          errorMessage = 'Access denied. You do not have permission to perform this action.';
+          break;
+        case 404:
+          errorMessage = data?.detail || 'The requested resource was not found.';
+          break;
+        case 422:
+          errorMessage = data?.detail || 'Validation error. Please check your input.';
+          break;
+        case 500:
+          errorMessage = data?.detail || 'Server error. Please try again later or contact support.';
+          break;
+        case 502:
+          errorMessage = 'Service temporarily unavailable. Please try again.';
+          break;
+        case 503:
+          errorMessage = 'Service maintenance in progress. Please try again later.';
+          break;
+        default:
+          errorMessage = data?.detail || data?.message || `Error ${status}: ${error.message}`;
+      }
+
+      // Attach user-friendly message to error object
+      error.userMessage = errorMessage;
+    } else if (error.request) {
+      // Request made but no response received
+      console.error('Backend API No Response:', error.request);
+      error.userMessage = 'Unable to connect to the server. Please check your internet connection.';
+    } else {
+      // Something else happened
+      console.error('Backend API Error:', error.message);
+      error.userMessage = error.message || 'An unexpected error occurred';
     }
+    
     return Promise.reject(error);
   }
 );

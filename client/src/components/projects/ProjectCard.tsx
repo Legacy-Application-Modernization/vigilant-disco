@@ -1,40 +1,39 @@
 import type { FC } from 'react';
-import { Download, Settings, Trash2 } from 'lucide-react';
-
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  status: 'planning' | 'in-progress' | 'completed' | 'archived';
-  sourceLanguage: string;
-  targetLanguage?: string;
-  createdAt: string;
-  updatedAt: string;
-  settings: any;
-  metadata?: any;
-}
+import { Download, Settings, Trash2, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import apiService from '../../services/api';
+import backendService from '../../services/backend.service';
+import type { Project, ProjectStatus } from '../../types/project';
 
 interface ProjectCardProps {
   project: Project;
   onDelete?: (projectId: string) => void;
   onUpdate?: (projectId: string, data: any) => void;
+  highlighted?: boolean;
 }
 
-const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete }) => {
-  const getStatusBadge = (status: string) => {
-    const statusStyles = {
-      planning: 'bg-blue-100 text-blue-800',
-      'in-progress': 'bg-yellow-100 text-yellow-800',
-      completed: 'bg-green-100 text-green-800',
-      archived: 'bg-red-100 text-red-800',
-    };
-
+const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete, highlighted }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  
+  // Use backend service for status badge styling
+  const getStatusBadge = (status: ProjectStatus) => {
+    const { bg, text, label } = backendService.getStatusBadgeStyle(status);
+    
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[status as keyof typeof statusStyles] || statusStyles.planning}`}>
-        {status.replace('-', ' ')}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bg} ${text}`}>
+          {label}
+        </span>
+        {status === 'failed' && project.error && (
+          <AlertCircle className="h-4 w-4 text-red-500" aria-label={project.error} />
+        )}
+      </div>
     );
   };
+  
+  // Calculate progress based on status
+  const progress = backendService.getProgressPercentage(project.status);
 
   const handleDelete = () => {
     if (onDelete) {
@@ -42,59 +41,134 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete }) => {
     }
   };
 
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    try {
+      console.log('Downloading project:', project.id);
+      
+      // Call API to get download URL from S3
+      const response = await apiService.downloadProject(project.id);
+      
+      if (response.success && response.data.downloadUrl) {
+        console.log('Download URL received:', response.data.downloadUrl);
+        
+        // Create a temporary anchor element and trigger download
+        const link = document.createElement('a');
+        link.href = response.data.downloadUrl;
+        link.download = response.data.fileName || `${project.name}.zip`;
+        link.target = '_blank'; // Open in new tab as backup
+        link.rel = 'noopener noreferrer';
+        
+        // Append to body, click, and remove
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log('Download initiated successfully');
+      } else {
+        throw new Error(response.message || 'Failed to get download URL');
+      }
+    } catch (error: any) {
+      console.error('Download error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to download project';
+      setDownloadError(errorMessage);
+      
+      // Show error to user (you can use a toast notification here)
+      alert(`Download failed: ${errorMessage}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow">
+    <div className={`bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-all ${
+      highlighted ? 'ring-4 ring-green-400 ring-opacity-50 animate-pulse' : ''
+    }`}>
       <div className="p-6">
         <div className="flex justify-between items-start">
-          <h2 className="text-lg font-semibold text-gray-900 truncate">{project.name}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 truncate">
+            {project.project_name || project.name}
+          </h2>
           {getStatusBadge(project.status)}
         </div>
         
-        {project.description && (
-          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{project.description}</p>
-        )}
-        
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-md">
-              {project.sourceLanguage}
-            </span>
-            {project.targetLanguage && (
-              <>
-                <span className="text-gray-400">→</span>
-                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-md">
-                  {project.targetLanguage}
-                </span>
-              </>
-            )}
+        {/* Progress Bar */}
+        <div className="mt-3">
+          <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Migration Progress</span>
+            <span>{progress}%</span>
           </div>
-          <div className="text-sm text-gray-500">
-            {new Date(project.updatedAt).toLocaleDateString()}
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all duration-500 ${
+                project.status === 'failed' ? 'bg-red-500' : 
+                project.status === 'completed' ? 'bg-green-500' : 
+                'bg-blue-500'
+              }`}
+              style={{ width: `${progress}%` }}
+            />
           </div>
         </div>
 
-        {/* Tags */}
-        {project.metadata?.tags && project.metadata.tags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {project.metadata.tags.slice(0, 3).map((tag: string) => (
-              <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                {tag}
-              </span>
-            ))}
-            {project.metadata.tags.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                +{project.metadata.tags.length - 3} more
-              </span>
-            )}
+        {/* Error Message */}
+        {project.error && (
+          <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+            <strong>Error:</strong> {project.error}
           </div>
         )}
+        
+        {/* Repository URL */}
+        <div className="mt-3 text-sm text-gray-600">
+          <a 
+            href={project.repository_url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-indigo-600 hover:text-indigo-800 truncate block"
+          >
+            {project.repository_url}
+          </a>
+        </div>
+        
+        <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-md">
+              {project.source_language || 'PHP'}
+            </span>
+            <span className="text-gray-400">→</span>
+            <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-md">
+              {project.target_language || 'NodeJS'}
+            </span>
+          </div>
+          <div className="text-sm text-gray-500">
+            {new Date(project.updated_at || project.created_at).toLocaleDateString()}
+          </div>
+        </div>
+
+        {/* Timestamps */}
+        <div className="mt-3 text-xs text-gray-500 space-y-1">
+          <div>Created: {new Date(project.created_at).toLocaleString()}</div>
+          {project.completed_at && (
+            <div className="text-green-600">
+              Completed: {new Date(project.completed_at).toLocaleString()}
+            </div>
+          )}
+        </div>
       </div>
       
-      <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 flex justify-end items-center">
+      <div className="border-t border-gray-200 px-6 py-3 bg-gray-50 flex justify-between items-center">
+        {/* Next Step Indicator */}
+        <div className="text-xs text-gray-600 italic">
+          {backendService.getNextStep(project.status) || 'Ready to download'}
+        </div>
+        
         <div className="flex space-x-2">
           <button 
-            className="text-gray-500 hover:text-gray-700"
-            title="Download"
+            className={`text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed ${isDownloading ? 'animate-pulse' : ''}`}
+            title={isDownloading ? 'Downloading...' : project.status === 'completed' ? 'Download from S3' : 'Complete migration first'}
+            onClick={handleDownload}
+            disabled={isDownloading || project.status !== 'completed'}
           >
             <Download className="h-4 w-4" />
           </button>
@@ -115,6 +189,12 @@ const ProjectCard: FC<ProjectCardProps> = ({ project, onDelete }) => {
           )}
         </div>
       </div>
+      
+      {downloadError && (
+        <div className="px-6 py-2 bg-red-50 border-t border-red-200">
+          <p className="text-xs text-red-600">{downloadError}</p>
+        </div>
+      )}
     </div>
   );
 };
