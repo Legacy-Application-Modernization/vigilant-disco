@@ -63,6 +63,7 @@ class App {
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
       'https://vigilant-disco-client.vercel.app',
+      'https://legacymodernize.vercel.app',
       // Add any preview deployments here as needed
     ];
 
