@@ -120,6 +120,17 @@ class App {
 
     // Explicit OPTIONS handler for CORS preflight requests
     this.app.options('*', (req, res) => {
+      const origin = req.headers.origin;
+      
+      // Set CORS headers manually for OPTIONS
+      if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+        res.setHeader('Access-Control-Max-Age', '600');
+      }
+      
       res.status(204).send();
     });
   }
