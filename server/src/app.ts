@@ -41,21 +41,7 @@ class App {
   }
 
   private initializeMiddleware(): void {
-    // Security middleware
-    this.app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          connectSrc: ["'self'", "https://firestore.googleapis.com"]
-        }
-      },
-      crossOriginEmbedderPolicy: false
-    }));
-
-    // CORS configuration - allow specific origins
+    // CORS configuration - MUST BE FIRST!
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:5174',
@@ -71,6 +57,8 @@ class App {
     this.app.use((req, res, next) => {
       const origin = req.headers.origin;
       
+      console.log('CORS Middleware - Origin:', origin);
+      
       // Check if origin is allowed
       if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
         res.setHeader('Access-Control-Allow-Origin', origin);
@@ -80,7 +68,6 @@ class App {
         res.setHeader('Access-Control-Allow-Origin', 'null');
       } else {
         // For requests without origin (same-origin requests, server-to-server, curl, etc.)
-        // Don't set credentials for these
         res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
       }
       
@@ -90,12 +77,28 @@ class App {
       
       // Handle preflight
       if (req.method === 'OPTIONS') {
+        console.log('CORS Middleware - Handling OPTIONS preflight');
         res.status(204).end();
         return;
       }
       
       next();
     });
+
+    // Security middleware - DISABLE crossOriginResourcePolicy to not interfere with CORS
+    this.app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          connectSrc: ["'self'", "https://firestore.googleapis.com"]
+        }
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: false
+    }));
 
     // Compression middleware
     this.app.use(compression() as unknown as express.RequestHandler);
