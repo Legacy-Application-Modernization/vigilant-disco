@@ -53,37 +53,33 @@ class App {
       // Add any preview deployments here as needed
     ];
 
+    const corsOptions: cors.CorsOptions = {
+      origin: (origin, callback) => {
+        console.log('CORS Middleware - Origin:', origin);
+
+        if (!origin) {
+          // Non-browser or same-origin requests
+          return callback(null, allowedOrigins[0]);
+        }
+
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+          return callback(null, origin);
+        }
+
+        console.warn('CORS Middleware - Blocked Origin:', origin);
+        return callback(null, false); // No CORS headers for disallowed origins
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+      maxAge: 600,
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
+    };
+
     // Apply CORS before any other middleware
-    this.app.use((req, res, next) => {
-      const origin = req.headers.origin;
-      
-      console.log('CORS Middleware - Origin:', origin);
-      
-      // Check if origin is allowed
-      if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-      } else if (origin) {
-        // Reject origins that are not allowed
-        res.setHeader('Access-Control-Allow-Origin', 'null');
-      } else {
-        // For requests without origin (same-origin requests, server-to-server, curl, etc.)
-        res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
-      }
-      
-      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-      res.setHeader('Access-Control-Max-Age', '600');
-      
-      // Handle preflight
-      if (req.method === 'OPTIONS') {
-        console.log('CORS Middleware - Handling OPTIONS preflight');
-        res.status(204).end();
-        return;
-      }
-      
-      next();
-    });
+    this.app.use(cors(corsOptions));
+    this.app.options('*', cors(corsOptions));
 
     // Security middleware - DISABLE crossOriginResourcePolicy to not interfere with CORS
     this.app.use(helmet({
