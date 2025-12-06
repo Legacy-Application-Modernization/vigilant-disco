@@ -73,11 +73,15 @@ class App {
       // Check if origin is allowed
       if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
         res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-        res.setHeader('Access-Control-Max-Age', '600');
+      } else if (!origin) {
+        // For requests without origin (same-origin or tools like curl)
+        res.setHeader('Access-Control-Allow-Origin', '*');
       }
+      
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+      res.setHeader('Access-Control-Max-Age', '600');
       
       // Handle preflight
       if (req.method === 'OPTIONS') {
