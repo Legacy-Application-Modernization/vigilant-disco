@@ -117,6 +117,11 @@ class App {
 
     // Trust proxy
     this.app.set('trust proxy', 1);
+
+    // Explicit OPTIONS handler for CORS preflight requests
+    this.app.options('*', (req, res) => {
+      res.status(204).send();
+    });
   }
 
   private initializeRoutes(): void {
