@@ -19,14 +19,37 @@ class App {
 
   constructor() {
     this.app = express();
-    this.port = parseInt(process.env.PORT || '3001');
-    this.app.options('*', (req, res) => {
-      res.header('Access-Control-Allow-Origin', 'https://vigilant-disco-client.vercel.app');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.sendStatus(200);
-    });
+    this.port = parseInt(process.env.PORT || '3001', 10);
+
+    // FIXED & BULLETPROOF CORS FOR VERCEL
+    this.app.use(
+      cors({
+        origin: (origin, callback) => {
+          const allowedOrigins = [
+            'https://vigilant-disco-client.vercel.app',
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://127.0.0.1:3000',
+          ];
+
+          // Allow requests with no origin (Postman, mobile apps, preflight OPTIONS)
+          if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        optionsSuccessStatus: 200, // Important for legacy browsers
+      })
+    );
+
+    // No need for manual OPTIONS handler anymore — cors() handles it perfectly
+
     this.initializeFirebase();
     this.initializeMiddleware();
     this.initializeRoutes();
@@ -39,7 +62,6 @@ class App {
       firebase.initialize();
     } catch (error) {
       console.error('Failed to initialize Firebase:', error);
-      // Don't exit in serverless environments (Vercel)
       if (process.env.VERCEL !== '1') {
         process.exit(1);
       }
@@ -47,51 +69,42 @@ class App {
   }
 
   private initializeMiddleware(): void {
-    // CORS disabled - handled in Vercel serverless handler (api/index.ts)
+    // Security headers (safe with CORS)
+    this.app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            connectSrc: ["'self'", 'https://firestore.googleapis.com'],
+          },
+        },
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: 'cross-origin' }, // Safe now
+      })
+    );
 
-    // Security middleware - DISABLE crossOriginResourcePolicy to not interfere with CORS
-    this.app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          connectSrc: ["'self'", "https://firestore.googleapis.com"]
-        }
-      },
-      crossOriginEmbedderPolicy: false,
-      crossOriginResourcePolicy: false
-    }));
-
-    // Compression middleware
     this.app.use(compression() as unknown as express.RequestHandler);
-
-    // Cookie parser middleware
     this.app.use(cookieParser());
-
-    // Body parsing middleware
     this.app.use(express.json({ limit: '1mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-    // Request logging middleware
+    // Request logging
     this.app.use((req, res, next) => {
       const start = Date.now();
-      
       res.on('finish', () => {
         const duration = Date.now() - start;
         console.log(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
       });
-      
       next();
     });
 
-    // Trust proxy
     this.app.set('trust proxy', 1);
   }
 
   private initializeRoutes(): void {
-    // Basic welcome route
     this.app.get('/', (req, res) => {
       res.json({
         success: true,
@@ -102,36 +115,33 @@ class App {
           'User Authentication & Profiles',
           'Project Management',
           'Firebase Firestore Database',
-          'RESTful API'
+          'RESTful API',
         ],
         endpoints: {
           health: '/health',
-          api: '/api/v1'
-        }
+          api: '/api/v1',
+        },
       });
     });
 
-    // Health check endpoint
     this.app.get('/health', (req, res) => {
       res.json({
         success: true,
         message: 'LegacyModernize API is running - Firebase Free Tier',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
-        tier: 'free'
+        tier: 'free',
       });
     });
 
-    // Test endpoint (no auth)
     this.app.get('/test', (req, res) => {
       res.json({
         success: true,
         message: 'Test endpoint working',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 
-    // API routes
     this.app.use('/api/v1', routes);
   }
 
@@ -147,8 +157,8 @@ class App {
           root: '/',
           health: '/health',
           test: '/test',
-          api: '/api/v1'
-        }
+          api: '/api/v1',
+        },
       });
     });
 
@@ -158,22 +168,18 @@ class App {
 
   public listen(): void {
     this.app.listen(this.port, () => {
-      console.log('🚀 LegacyModernize API - Firebase Free Tier');
+      console.log('LegacyModernize API - Firebase Free Tier');
       console.log('');
-      console.log('📊 Server Configuration:');
+      console.log('Server Configuration:');
       console.log(`   Port: ${this.port}`);
       console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`   CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+      console.log(`   CORS: https://vigilant-disco-client.vercel.app + localhost`);
       console.log('');
-      console.log('📡 Available Endpoints:');
-      console.log(`   Root: http://localhost:${this.port}/`);
-      console.log(`   Health Check: http://localhost:${this.port}/health`);
-      console.log(`   Test: http://localhost:${this.port}/test`);
-      console.log(`   API Base: http://localhost:${this.port}/api/v1`);
-      console.log(`   Users: http://localhost:${this.port}/api/v1/users`);
-      console.log(`   Projects: http://localhost:${this.port}/api/v1/projects`);
+      console.log('Available Endpoints:');
+      console.log(`   Health: http://localhost:${this.port}/health`);
+      console.log(`   API: http://localhost:${this.port}/api/v1`);
       console.log('');
-      console.log('✅ Server is running successfully!');
+      console.log('Server is running successfully!');
     });
   }
 
