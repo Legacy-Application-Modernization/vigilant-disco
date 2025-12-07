@@ -18,24 +18,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'https://legacymodernize.vercel.app',
   ];
 
-  // CRITICAL: Always set CORS headers for allowed origins (required for both preflight AND actual requests)
+  console.log('🔍 Vercel Handler - Method:', req.method, 'Origin:', origin);
+
+  // CRITICAL: Set CORS headers BEFORE any other processing
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
+    console.log('✅ Setting CORS headers for origin:', origin);
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.setHeader('Access-Control-Max-Age', '600');
+  } else {
+    console.log('❌ Origin not allowed:', origin);
   }
 
-  // Handle OPTIONS preflight immediately
+  // Handle OPTIONS preflight immediately - don't pass to Express
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    console.log('🔄 Handling OPTIONS preflight');
+    res.status(200).end();
+    return;
   }
 
   // Pass to Express app for all other requests
+  console.log('📤 Passing to Express app');
   return new Promise((resolve, reject) => {
     app(req as any, res as any, (err: any) => {
       if (err) {
+        console.error('❌ Express error:', err);
         reject(err);
       } else {
         resolve(undefined);

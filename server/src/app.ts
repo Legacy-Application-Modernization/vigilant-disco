@@ -41,45 +41,44 @@ class App {
   }
 
   private initializeMiddleware(): void {
-    // CORS configuration - MUST BE FIRST!
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:3000', 
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5174',
-      'https://vigilant-disco-client.vercel.app',
-      'https://legacymodernize.vercel.app',
-      // Add any preview deployments here as needed
-    ];
+    // CORS configuration - Skip for Vercel serverless (handled in api/index.ts)
+    if (process.env.VERCEL !== '1') {
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'http://localhost:3000', 
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:5174',
+        'https://vigilant-disco-client.vercel.app',
+        'https://legacymodernize.vercel.app',
+      ];
 
-    const corsOptions: cors.CorsOptions = {
-      origin: (origin, callback) => {
-        console.log('CORS Middleware - Origin:', origin);
+      const corsOptions: cors.CorsOptions = {
+        origin: (origin, callback) => {
+          console.log('CORS Middleware - Origin:', origin);
 
-        if (!origin) {
-          // Non-browser or same-origin requests
-          return callback(null, allowedOrigins[0]);
-        }
+          if (!origin) {
+            return callback(null, allowedOrigins[0]);
+          }
 
-        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-          return callback(null, origin);
-        }
+          if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            return callback(null, origin);
+          }
 
-        console.warn('CORS Middleware - Blocked Origin:', origin);
-        return callback(null, false); // No CORS headers for disallowed origins
-      },
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-      maxAge: 600,
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
-    };
+          console.warn('CORS Middleware - Blocked Origin:', origin);
+          return callback(null, false);
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+        maxAge: 600,
+        preflightContinue: false,
+        optionsSuccessStatus: 204,
+      };
 
-    // Apply CORS before any other middleware
-    this.app.use(cors(corsOptions));
-    this.app.options('*', cors(corsOptions));
+      this.app.use(cors(corsOptions));
+      this.app.options('*', cors(corsOptions));
+    }
 
     // Security middleware - DISABLE crossOriginResourcePolicy to not interfere with CORS
     this.app.use(helmet({
