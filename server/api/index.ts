@@ -6,7 +6,7 @@ const appInstance = new App();
 const app = appInstance.app;
 
 // Vercel serverless handler
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin;
   const allowedOrigins = [
     'http://localhost:5173',
@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'https://legacymodernize.vercel.app',
   ];
 
-  console.log('🔍 Vercel Handler - Method:', req.method, 'Origin:', origin);
+  console.log('🔍 Vercel Handler - Method:', req.method, 'Origin:', origin, 'Path:', req.url);
 
   // CRITICAL: Set CORS headers BEFORE any other processing
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
@@ -34,21 +34,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Handle OPTIONS preflight immediately - don't pass to Express
   if (req.method === 'OPTIONS') {
-    console.log('🔄 Handling OPTIONS preflight');
-    res.status(200).end();
+    console.log('🔄 Handling OPTIONS preflight - returning 204');
+    res.writeHead(204, {
+      'Content-Length': '0'
+    });
+    res.end();
     return;
   }
 
   // Pass to Express app for all other requests
   console.log('📤 Passing to Express app');
-  return new Promise((resolve, reject) => {
-    app(req as any, res as any, (err: any) => {
-      if (err) {
-        console.error('❌ Express error:', err);
-        reject(err);
-      } else {
-        resolve(undefined);
-      }
-    });
-  });
+  app(req as any, res as any);
 }
