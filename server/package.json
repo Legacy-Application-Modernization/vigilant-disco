@@ -2,7 +2,7 @@
   "name": "legacy-modernization-server",
   "version": "1.0.0",
   "description": "Backend server for legacy code modernization platform",
-  "main": "dist/index.js",
+  "main": "api/index.js",
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
