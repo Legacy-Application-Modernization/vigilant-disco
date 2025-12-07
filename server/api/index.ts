@@ -7,7 +7,6 @@ const app = appInstance.app;
 
 // Vercel serverless handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Manually handle CORS for Vercel serverless before Express processes the request
   const origin = req.headers.origin;
   const allowedOrigins = [
     'http://localhost:5173',
@@ -19,19 +18,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     'https://legacymodernize.vercel.app',
   ];
 
-  // Set CORS headers
+  // CRITICAL: Always set CORS headers for allowed origins (required for both preflight AND actual requests)
   if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.setHeader('Access-Control-Max-Age', '600');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-  res.setHeader('Access-Control-Max-Age', '600');
 
-  // Handle OPTIONS preflight
+  // Handle OPTIONS preflight immediately
   if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
+    return res.status(200).end();
   }
 
   // Pass to Express app for all other requests
