@@ -13,17 +13,21 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'legacy-modernization' },
   transports: [
-    new winston.transports.File({ 
-      filename: path.join(logDir, 'error.log'), 
-      level: 'error' 
-    }),
-    new winston.transports.File({ 
-      filename: path.join(logDir, 'combined.log') 
-    }),
+    // Only use file transports in non-Vercel environments (Vercel filesystem is read-only)
+    ...(process.env.VERCEL !== '1' ? [
+      new winston.transports.File({ 
+        filename: path.join(logDir, 'error.log'), 
+        level: 'error' 
+      }),
+      new winston.transports.File({ 
+        filename: path.join(logDir, 'combined.log') 
+      }),
+    ] : []),
   ],
 });
 
-if (process.env.NODE_ENV !== 'production') {
+// Always log to console (Vercel captures these)
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL === '1') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),
