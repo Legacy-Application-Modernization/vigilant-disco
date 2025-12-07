@@ -7,8 +7,11 @@ const app = appInstance.app;
 
 // Vercel serverless handler
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // Set permissive CORS headers for all requests
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '*';
+  
+  // Echo back the origin (required for credentials mode) or use wildcard
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
   res.setHeader('Access-Control-Max-Age', '600');
