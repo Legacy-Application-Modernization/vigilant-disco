@@ -20,7 +20,13 @@ class App {
   constructor() {
     this.app = express();
     this.port = parseInt(process.env.PORT || '3001');
-    
+    this.app.options('*', (req, res) => {
+      res.header('Access-Control-Allow-Origin', 'https://vigilant-disco-client.vercel.app');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.sendStatus(200);
+    });
     this.initializeFirebase();
     this.initializeMiddleware();
     this.initializeRoutes();
