@@ -25,26 +25,15 @@ class App {
     this.app.use(
       cors({
         origin: (origin, callback) => {
-          const allowedOrigins = [
-            'https://vigilant-disco-client.vercel.app',
-            'http://localhost:3000',
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-            'http://127.0.0.1:3000',
-          ];
-
-          // Allow requests with no origin (Postman, mobile apps, preflight OPTIONS)
-          if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
+          // Allow preflight (origin is null) and your client
+          if (!origin || origin.includes('vigilant-disco-client.vercel.app') || origin.includes('localhost')) {
             callback(null, true);
           } else {
-            console.log('Blocked by CORS:', origin);
             callback(new Error('Not allowed by CORS'));
           }
         },
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-        optionsSuccessStatus: 200, // Important for legacy browsers
+        optionsSuccessStatus: 200
       })
     );
 
