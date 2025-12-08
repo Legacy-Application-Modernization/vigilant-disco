@@ -270,7 +270,7 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       
       // Cache the data in localStorage with repository-specific key
       const repoKey = `${repoData.owner}_${repoData.repo}`;
-      const cacheKey = `cachedTransformationData_${repoKey}`;
+      //const cacheKey = `cachedTransformationData_${repoKey}`;
       //localStorage.setItem(cacheKey, JSON.stringify(finalData));
       console.log('✓ Cached transformation data for repository:', repoKey);
       console.log(`✓ Migration complete: ${allPhaseResults.length} phases processed`);
