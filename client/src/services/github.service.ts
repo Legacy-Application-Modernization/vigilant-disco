@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { cacheManager, CACHE_KEYS, CACHE_EXPIRATION } from '../utils/cacheManager';
+import { cacheManager, CACHE_EXPIRATION } from '../utils/cacheManager';
+import { CACHE_KEYS } from '../utils/cacheManager';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 

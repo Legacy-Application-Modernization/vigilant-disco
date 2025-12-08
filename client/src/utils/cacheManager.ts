@@ -160,7 +160,7 @@ export const CACHE_KEYS = {
   TRANSFORMATION_DATA: 'cachedTransformationData',
   SELECTED_REPOSITORY: 'selectedRepository',
   MCP_SESSION: 'mcp_session_token',
-  USER_PREFERENCES: 'userPreferences',
+  USER_PREFERENCES: 'userPreferences'
 } as const;
 
 // Cache expiration times (in milliseconds)

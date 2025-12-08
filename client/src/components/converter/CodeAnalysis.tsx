@@ -139,7 +139,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       const analysisData = analysisRes.data.analysis || analysisRes.data;
       setAnalysisResult(analysisData);
       // Cache the data in localStorage
-      localStorage.setItem('cachedAnalysisResult', JSON.stringify(analysisData));
+      //localStorage.setItem('cachedAnalysisResult', JSON.stringify(analysisData));
 
       // Step 2: Wait for analysis to complete, then call create_migration_plan
       const plannerRes = await backendApi.post('/migration/create_migration_plan', {
@@ -154,7 +154,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       const plannerData = plannerRes.data.conversion_plan || plannerRes.data;
       setConversionPlanner(plannerData);
       // Cache the data in localStorage
-      localStorage.setItem('cachedConversionPlanner', JSON.stringify(plannerData));
+      //localStorage.setItem('cachedConversionPlanner', JSON.stringify(plannerData));
       setAnalysisComplete(true);
     } catch (err) {
       // Keep the error user-friendly; devs can inspect console for details
@@ -205,40 +205,30 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   };
 
   const getEstimatedTime = () => {
-    if (!conversionPlanner?.phases) return 'N/A';
+    if (!conversionPlanner?.phases || !Array.isArray(conversionPlanner.phases)) return 'N/A';
     
     const totalDays = conversionPlanner.phases.reduce((sum: number, phase: any) => {
-      // Extract number from strings like "2 days", "3 weeks", etc.
-      const timeStr = phase.estimated_time || '';
-      const match = timeStr.match(/(\d+)\s*(day|week|month)/i);
-      
-      if (match) {
-        const value = parseInt(match[1]);
-        const unit = match[2].toLowerCase();
-        
-        // Convert to days
-        if (unit === 'week') {
-          return sum + (value * 7);
-        } else if (unit === 'month') {
-          return sum + (value * 30);
-        } else {
-          return sum + value; // days
-        }
-      }
-      return sum;
+      // estimated_time_days is now a number (e.g., 2.0, 1.5, 3.5)
+      const days = phase?.estimated_time_days || 0;
+      return sum + days;
     }, 0);
     
     // Format the output nicely
     if (totalDays === 0) return 'N/A';
-    if (totalDays < 7) return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
+    if (totalDays < 7) {
+      // Handle decimal days (e.g., 2.5 days)
+      return totalDays % 1 === 0 
+        ? `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`
+        : `${totalDays.toFixed(1)} days`;
+    }
     if (totalDays < 30) {
       const weeks = Math.floor(totalDays / 7);
-      const days = totalDays % 7;
+      const days = Math.round(totalDays % 7);
       if (days === 0) return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
       return `${weeks}w ${days}d`;
     }
     const months = Math.floor(totalDays / 30);
-    const remainingDays = totalDays % 30;
+    const remainingDays = Math.round(totalDays % 30);
     if (remainingDays === 0) return `${months} ${months === 1 ? 'month' : 'months'}`;
     return `${months}m ${remainingDays}d`;
   };
