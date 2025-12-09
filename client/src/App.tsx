@@ -59,9 +59,15 @@ const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [completedSteps, setCompletedSteps] = useState<number[]>([1]); // Step 1 is always accessible
+  const [shouldRefreshAnalysis, setShouldRefreshAnalysis] = useState<boolean>(false);
   // analysisResults state removed (unused) - reports use `reportsData` instead
 
   // transformationOptions removed (unused in this flow)
+
+  // Debug: Log when shouldRefreshAnalysis changes
+  useEffect(() => {
+    console.log('[App] shouldRefreshAnalysis changed to:', shouldRefreshAnalysis, 'at step:', currentStep);
+  }, [shouldRefreshAnalysis, currentStep]);
 
   // Project limit dialog state
   const [showProjectLimitDialog, setShowProjectLimitDialog] = useState<boolean>(false);
@@ -76,9 +82,19 @@ const AppContent: React.FC = () => {
   // Firebase Auth Listener
   useEffect(() => {
     // Run migration from localStorage to IndexedDB on app startup
-    migrateFromLocalStorage().catch(err => 
+    migrateFromLocalStorage().catch(err =>
       console.error('Migration failed:', err)
     );
+
+    // Clear detailed analysis view tracking on new browser session
+    // If sessionStorage doesn't have the flag, it means browser was closed and reopened
+    if (!sessionStorage.getItem('browserSessionActive')) {
+      console.log('[App] New browser session detected, clearing detailed analysis tracking');
+      localStorage.removeItem('hasViewedDetailedAnalysis');
+      localStorage.removeItem('detailedAnalysisViewedAt');
+      // Set the flag for this session
+      sessionStorage.setItem('browserSessionActive', 'true');
+    }
 
     if (!auth) {
       // Firebase not configured; skip auth listener and clear loading so app can show UI accordingly
@@ -188,6 +204,10 @@ const AppContent: React.FC = () => {
       return Array.from(updated);
     });
     setCurrentStep(2);
+    // Force refresh when starting new analysis
+    setShouldRefreshAnalysis(true);
+    // Clear the last analysis load time to force fresh analysis
+    sessionStorage.removeItem('lastAnalysisLoadTime');
     // Refresh project limits after starting analysis
     setProjectLimitsRefreshKey(prev => prev + 1);
   };
@@ -279,7 +299,12 @@ const AppContent: React.FC = () => {
           <Reports
             analysisResult={reportsData?.analysisResult}
             conversionPlanner={reportsData?.conversionPlanner}
-            onBack={() => setActiveTab('converter')}
+            onBack={() => {
+              console.log('[App] Navigating back from Reports to Converter');
+              setActiveTab('converter');
+              // Ensure we go back to step 2 (Analysis)
+              setCurrentStep(2);
+            }}
           />
         );
       case 'profile':
@@ -298,6 +323,10 @@ const AppContent: React.FC = () => {
           />
         );
       case 2:
+        // Only force refresh if shouldRefreshAnalysis is true AND we haven't been to step 3 yet
+        // If step 3 is in completedSteps, it means we're coming back from transformation
+        const shouldForceRefresh = shouldRefreshAnalysis && !completedSteps.includes(3);
+        console.log('[App] Rendering step 2, shouldRefreshAnalysis:', shouldRefreshAnalysis, 'completedSteps:', completedSteps, 'finalForceRefresh:', shouldForceRefresh);
         return (
           <CodeAnalysis
             projectId="current"
@@ -310,19 +339,25 @@ const AppContent: React.FC = () => {
                 updated.add(3);
                 return Array.from(updated);
               });
+              // Reset the refresh flag after analysis is complete
+              console.log('[App] Setting shouldRefreshAnalysis to FALSE (moving to step 3)');
+              setShouldRefreshAnalysis(false);
               setCurrentStep(3);
             }}
             onViewReports={(data) => {
               setReportsData(data);
               setActiveTab('reports');
             }}
-            forceRefresh={true}
+            forceRefresh={shouldForceRefresh}
           />
         );
       case 3:
         return (
           <CodeTransformation
-            onBack={() => goToStep(2)}
+            onBack={() => {
+              console.log('[App] Navigating back from step 3 to step 2, shouldRefreshAnalysis:', shouldRefreshAnalysis);
+              goToStep(2);
+            }}
             onNext={() => {
               setCompletedSteps(prev => {
                 const updated = new Set(prev);

@@ -5,9 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  RefreshCw,
   File,
-  Download,
   AlertCircle,
   CheckCircle2,
   Loader2,
@@ -62,7 +60,6 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
   const [currentPhase, setCurrentPhase] = useState(0);
   const [totalPhases, setTotalPhases] = useState(0);
   const [expandedFileId, setExpandedFileId] = useState<string | null>(null);
-  const [improvingFiles, setImprovingFiles] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const hasFetchedRef = useRef(false);
 
@@ -284,63 +281,6 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
     setExpandedFileId(expandedFileId === fileId ? null : fileId);
   };
 
-  const improveCode = async (sourceFile: string, phaseNumber: number) => {
-    const fileId = `${phaseNumber}-${sourceFile}`;
-    
-    try {
-      setImprovingFiles(prev => new Set(prev).add(fileId));
-
-      // TODO: Replace with actual AI improvement API call
-      // const response = await fetch(`/api/improve-code`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ projectId, sourceFile, phaseNumber })
-      // });
-      // const improvedCode = await response.json();
-
-      // Simulate AI improvement
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Update the code with improvements (placeholder)
-      console.log('Code improved for:', sourceFile);
-      
-    } catch (error) {
-      console.error('Failed to improve code:', error);
-      alert('Failed to improve code. Please try again.');
-    } finally {
-      setImprovingFiles(prev => {
-        const next = new Set(prev);
-        next.delete(fileId);
-        return next;
-      });
-    }
-  };
-
-  const downloadFile = (fileName: string, content: string) => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadAllFiles = () => {
-    if (!transformationData?.phaseresults) return;
-
-    transformationData.phaseresults.forEach(phase => {
-      const results = phase?.conversion_results || [];
-      results.forEach(result => {
-        if (result?.target_file && result?.converted_code) {
-          downloadFile(result.target_file, result.converted_code);
-        }
-      });
-    });
-  };
-
   const getTotalFiles = () => {
     if (!transformationData?.phaseresults) return 0;
     return transformationData.phaseresults.reduce(
@@ -541,7 +481,6 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
               {(phase?.conversion_results || []).map((result, idx) => {
                 const fileId = `${phase.phase_number}-${result.source_file}`;
                 const isExpanded = expandedFileId === fileId;
-                const isImproving = improvingFiles.has(fileId);
 
                 return (
                   <div key={idx} className="bg-white">
@@ -576,36 +515,11 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
                     {/* Expanded Content */}
                     {isExpanded && (
                       <div className="p-4 bg-gray-50 border-t border-gray-200">
-                        {/* Action Buttons */}
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="text-sm text-gray-600">
-                            Original: <span className="font-mono text-xs">{result.source_file}</span>
-                            <span className="mx-2">→</span>
-                            Converted: <span className="font-mono text-xs">{result.target_file}</span>
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              className="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-700 rounded hover:bg-emerald-100 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                improveCode(result.source_file, phase.phase_number);
-                              }}
-                              disabled={isImproving}
-                            >
-                              <RefreshCw size={14} className={`mr-1 ${isImproving ? 'animate-spin' : ''}`} />
-                              {isImproving ? 'Improving...' : 'AI Improve'}
-                            </button>
-                            <button
-                              className="px-3 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 flex items-center"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadFile(result.target_file, result.converted_code);
-                              }}
-                            >
-                              <Download size={14} className="mr-1" />
-                              Download
-                            </button>
-                          </div>
+                        {/* File Info */}
+                        <div className="text-sm text-gray-600 mb-4">
+                          Original: <span className="font-mono text-xs">{result.source_file}</span>
+                          <span className="mx-2">→</span>
+                          Converted: <span className="font-mono text-xs">{result.target_file}</span>
                         </div>
 
                         {/* Code Comparison */}
@@ -692,33 +606,22 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
           )}
         </div>
 
-        <div className="flex space-x-3">
-          <button
-            onClick={downloadAllFiles}
-            disabled={processingPhases}
-            className="px-6 py-2 border border-indigo-500 text-indigo-500 rounded-md hover:bg-indigo-50 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download size={18} className="mr-2" />
-            Download All Files
-          </button>
-
-          <button
-            onClick={onNext}
-            disabled={processingPhases}
-            className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {processingPhases ? (
-              <>
-                <Loader2 size={18} className="mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                Export <ChevronRight size={18} className="ml-1" />
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={onNext}
+          disabled={processingPhases}
+          className="bg-indigo-500 text-white px-6 py-2 rounded-md hover:bg-indigo-600 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {processingPhases ? (
+            <>
+              <Loader2 size={18} className="mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              Export <ChevronRight size={18} className="ml-1" />
+            </>
+          )}
+        </button>
       </div>
       </>
       )}

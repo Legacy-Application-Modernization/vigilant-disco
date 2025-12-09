@@ -42,10 +42,13 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Initialize state - will load from IndexedDB on mount
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [conversionPlanner, setConversionPlanner] = useState<any>(null);
+
+  // Track if we've already loaded data to prevent duplicate calls
+  const hasLoadedRef = React.useRef(false);
 
   const loadFromServer = async () => {
     setIsAnalyzing(true);
@@ -149,11 +152,47 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
     // Load cached data from IndexedDB and fallback to server
     const loadData = async () => {
       try {
+        // Prevent duplicate calls within this component instance
+        if (hasLoadedRef.current) {
+          console.log('Already loaded in this component instance, skipping');
+          return;
+        }
+
+        hasLoadedRef.current = true;
+
+        console.log('[CodeAnalysis] forceRefresh prop:', forceRefresh);
+
+        // Check sessionStorage to see if we recently loaded analysis data
+        const lastAnalysisLoadTime = sessionStorage.getItem('lastAnalysisLoadTime');
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+
+        console.log('[CodeAnalysis] lastAnalysisLoadTime:', lastAnalysisLoadTime);
+        console.log('[CodeAnalysis] Time since last load:', lastAnalysisLoadTime ? (now - parseInt(lastAnalysisLoadTime)) / 1000 : 'N/A', 'seconds');
+
         // If forceRefresh is true, skip cache and fetch fresh data
         if (forceRefresh) {
           console.log('Force refresh enabled, skipping cache and fetching fresh analysis data');
           await loadFromServer();
+          sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
           return;
+        }
+
+        // If we loaded analysis data recently (within 5 minutes) and forceRefresh is false, use cache
+        if (lastAnalysisLoadTime && (now - parseInt(lastAnalysisLoadTime)) < fiveMinutes) {
+          console.log('Analysis data was loaded recently, using cache instead of server');
+          // Load from IndexedDB cache
+          const cachedAnalysis = await cacheManager.get(CACHE_KEYS.ANALYSIS_RESULT);
+          const cachedPlanner = await cacheManager.get(CACHE_KEYS.CONVERSION_PLANNER);
+
+          if (cachedAnalysis && cachedPlanner) {
+            console.log('Using cached analysis and conversion plan data from IndexedDB');
+            setAnalysisResult(cachedAnalysis);
+            setConversionPlanner(cachedPlanner);
+            setIsAnalyzing(false);
+            setAnalysisComplete(true);
+            return;
+          }
         }
 
         // Try to load from IndexedDB cache first
@@ -166,25 +205,32 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
           setConversionPlanner(cachedPlanner);
           setIsAnalyzing(false);
           setAnalysisComplete(true);
+          sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
           return;
         }
 
         // If no cache, load from server
         console.log('No cache found, loading from server');
         await loadFromServer();
+        sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
       } catch (err) {
         console.error('Error loading cached data:', err);
         // Fallback to server on error
         await loadFromServer();
+        sessionStorage.setItem('lastAnalysisLoadTime', Date.now().toString());
       }
     };
 
     void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [forceRefresh]);
+  }, []);
 
   const handleViewReports = () => {
     if (analysisResult && conversionPlanner) {
+      // Track that user has viewed detailed analysis
+      localStorage.setItem('hasViewedDetailedAnalysis', 'true');
+      localStorage.setItem('detailedAnalysisViewedAt', Date.now().toString());
+
       onViewReports({
         analysisResult,
         conversionPlanner
