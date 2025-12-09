@@ -28,6 +28,17 @@ const UploadFiles: FC<UploadFilesProps> = ({
   const [importedRepo, setImportedRepo] = useState<Repository | null>(null);
   const [existingProject, setExistingProject] = useState<any>(null);
 
+  // Handle starting analysis
+  // Note: We DON'T clear cache here to allow navigation back from later stages
+  // Cache is only cleared when:
+  // 1. User cancels/resets the conversion (handleCancelTransformation in App.tsx)
+  // 2. Browser is closed and reopened (new session in App.tsx)
+  const handleStartAnalysis = () => {
+    console.log('[UploadFiles] Starting analysis (cache preserved for navigation)');
+    // Proceed with analysis
+    onAnalyzeCode();
+  };
+
   // Handle Git URL import and check for existing project
   const handleGitImport = async () => {
     if (!gitUrl.trim()) {
@@ -383,7 +394,7 @@ const UploadFiles: FC<UploadFilesProps> = ({
 
           {/* Action Button */}
           <button
-            onClick={() => onAnalyzeCode()}
+            onClick={handleStartAnalysis}
             className="w-full bg-indigo-500 text-white px-6 py-4 rounded-lg hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2 font-medium shadow-lg shadow-indigo-500/30"
           >
             Start Migration Analysis

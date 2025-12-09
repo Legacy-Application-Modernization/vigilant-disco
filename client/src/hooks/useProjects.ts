@@ -11,26 +11,21 @@ export const useProjects = () => {
 
   const fetchProjects = async () => {
     if (!currentUser) return;
-    
+
     try {
       setLoading(true);
       setError(null);
       const response = await backendService.getUserProjects(currentUser.uid);
-      console.log('📦 Projects Response:', response);
-      console.log('📦 Response.projects:', response.projects);
-      console.log('📦 Response type:', typeof response);
-      
+
       if (response.success) {
         const projectList = response.projects || [];
-        console.log('📦 Setting projects:', projectList);
         setProjects(projectList);
       } else if (Array.isArray(response)) {
         // Handle case where response is directly an array
-        console.log('📦 Response is array, setting directly');
         setProjects(response);
       }
     } catch (err: any) {
-      console.error('❌ Fetch projects error:', err);
+      console.error('Fetch projects error:', err);
       setError(err.userMessage || err.message || 'Failed to fetch projects');
     } finally {
       setLoading(false);

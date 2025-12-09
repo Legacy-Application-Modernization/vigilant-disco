@@ -194,7 +194,7 @@ return res.json(users);`}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {project.name}
+                            {project.project_name || project.name || 'Untitled Project'}
                           </div>
                           {project.description && (
                             <div className="text-sm text-gray-500 truncate max-w-xs">
@@ -205,11 +205,11 @@ return res.json(users);`}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
-                          {formatDate(project.createdAt)}
+                          {formatDate(project.created_at || project.createdAt || new Date())}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span 
+                        <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(project.status)}`}
                         >
                           {formatStatus(project.status)}
@@ -217,10 +217,10 @@ return res.json(users);`}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
-                          {project.sourceLanguage}
-                          {project.targetLanguage && (
+                          {project.source_language || project.sourceLanguage || 'PHP'}
+                          {(project.target_language || project.targetLanguage) && (
                             <span className="text-indigo-600">
-                              {' → '}{project.targetLanguage}
+                              {' → '}{project.target_language || project.targetLanguage}
                             </span>
                           )}
                         </div>

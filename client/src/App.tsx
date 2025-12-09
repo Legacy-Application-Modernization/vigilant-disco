@@ -36,6 +36,9 @@ import apiService from './services/api';
 // Migration utility
 import { migrateFromLocalStorage } from './utils/migration';
 
+// Cache manager
+import { cacheManager } from './utils/cacheManager';
+
 type TabType = 'dashboard' | 'projects' | 'reports' | 'profile' | 'converter' | 'templates' | 'settings' | 'help';
 
 // Main App Content Component (wrapped by AuthProvider)
@@ -64,10 +67,6 @@ const AppContent: React.FC = () => {
 
   // transformationOptions removed (unused in this flow)
 
-  // Debug: Log when shouldRefreshAnalysis changes
-  useEffect(() => {
-    console.log('[App] shouldRefreshAnalysis changed to:', shouldRefreshAnalysis, 'at step:', currentStep);
-  }, [shouldRefreshAnalysis, currentStep]);
 
   // Project limit dialog state
   const [showProjectLimitDialog, setShowProjectLimitDialog] = useState<boolean>(false);
@@ -89,9 +88,14 @@ const AppContent: React.FC = () => {
     // Clear detailed analysis view tracking on new browser session
     // If sessionStorage doesn't have the flag, it means browser was closed and reopened
     if (!sessionStorage.getItem('browserSessionActive')) {
-      console.log('[App] New browser session detected, clearing detailed analysis tracking');
       localStorage.removeItem('hasViewedDetailedAnalysis');
       localStorage.removeItem('detailedAnalysisViewedAt');
+
+      // Clear all conversion cache on new browser session
+      cacheManager.clear().catch(err =>
+        console.error('Error clearing cache on new session:', err)
+      );
+
       // Set the flag for this session
       sessionStorage.setItem('browserSessionActive', 'true');
     }
@@ -204,10 +208,21 @@ const AppContent: React.FC = () => {
       return Array.from(updated);
     });
     setCurrentStep(2);
-    // Force refresh when starting new analysis
-    setShouldRefreshAnalysis(true);
-    // Clear the last analysis load time to force fresh analysis
-    sessionStorage.removeItem('lastAnalysisLoadTime');
+
+    // Only force refresh if this is the FIRST time going to step 2 (not already completed)
+    // If step 2 is already in completedSteps, we're navigating back - don't force refresh
+    const isFirstTimeAnalysis = !completedSteps.includes(2);
+
+    if (isFirstTimeAnalysis) {
+      // Force refresh when starting new analysis
+      setShouldRefreshAnalysis(true);
+      // Clear the last analysis load time to force fresh analysis
+      sessionStorage.removeItem('lastAnalysisLoadTime');
+    } else {
+      // Don't force refresh when navigating back - let cache work
+      setShouldRefreshAnalysis(false);
+    }
+
     // Refresh project limits after starting analysis
     setProjectLimitsRefreshKey(prev => prev + 1);
   };
@@ -216,7 +231,7 @@ const AppContent: React.FC = () => {
     try {
       // Get the current project ID
       const projectId = localStorage.getItem('currentProjectId');
-      
+
       if (projectId) {
         // Delete the project from the backend
         try {
@@ -235,8 +250,10 @@ const AppContent: React.FC = () => {
       localStorage.removeItem('failedPhases');
       localStorage.removeItem('projectJustSaved');
       localStorage.removeItem('projectsSavedAt');
-      
-      console.log('Transformation data cleared');
+
+      // Clear all cached data when resetting to stage 1
+      await cacheManager.clear();
+      sessionStorage.clear();
     } catch (error) {
       console.error('Error during transformation cancellation:', error);
     }
@@ -245,7 +262,7 @@ const AppContent: React.FC = () => {
     setCurrentStep(1);
     // Reset completed steps to empty
     setCompletedSteps([]);
-    
+
     // Refresh project limits
     setProjectLimitsRefreshKey(prev => prev + 1);
   };
@@ -300,10 +317,9 @@ const AppContent: React.FC = () => {
             analysisResult={reportsData?.analysisResult}
             conversionPlanner={reportsData?.conversionPlanner}
             onBack={() => {
-              console.log('[App] Navigating back from Reports to Converter');
               setActiveTab('converter');
-              // Ensure we go back to step 2 (Analysis)
               setCurrentStep(2);
+              setShouldRefreshAnalysis(false);
             }}
           />
         );
@@ -326,7 +342,6 @@ const AppContent: React.FC = () => {
         // Only force refresh if shouldRefreshAnalysis is true AND we haven't been to step 3 yet
         // If step 3 is in completedSteps, it means we're coming back from transformation
         const shouldForceRefresh = shouldRefreshAnalysis && !completedSteps.includes(3);
-        console.log('[App] Rendering step 2, shouldRefreshAnalysis:', shouldRefreshAnalysis, 'completedSteps:', completedSteps, 'finalForceRefresh:', shouldForceRefresh);
         return (
           <CodeAnalysis
             projectId="current"
@@ -339,8 +354,6 @@ const AppContent: React.FC = () => {
                 updated.add(3);
                 return Array.from(updated);
               });
-              // Reset the refresh flag after analysis is complete
-              console.log('[App] Setting shouldRefreshAnalysis to FALSE (moving to step 3)');
               setShouldRefreshAnalysis(false);
               setCurrentStep(3);
             }}
@@ -355,7 +368,6 @@ const AppContent: React.FC = () => {
         return (
           <CodeTransformation
             onBack={() => {
-              console.log('[App] Navigating back from step 3 to step 2, shouldRefreshAnalysis:', shouldRefreshAnalysis);
               goToStep(2);
             }}
             onNext={() => {
@@ -406,13 +418,11 @@ const AppContent: React.FC = () => {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header 
-          user={user} 
+        <Header
+          user={user}
           refreshKey={projectLimitsRefreshKey}
-          onSearch={(query) => {
+          onSearch={() => {
             setActiveTab('projects');
-            // You can store the search query in state if needed
-            console.log('Search query:', query);
           }}
         />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-100">

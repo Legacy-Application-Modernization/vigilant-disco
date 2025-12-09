@@ -16,6 +16,9 @@ import { cacheManager, CACHE_KEYS } from '../../utils/cacheManager';
 //  - /analysis/analyze_repository
 //  - /migration/create_migration_plan
 
+// Global flag to prevent duplicate API calls across component instances
+let isLoadingFromServer = false;
+
 interface CodeAnalysisProps {
   projectId?: string;
   onBack?: () => void;
@@ -51,14 +54,21 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   const hasLoadedRef = React.useRef(false);
 
   const loadFromServer = async () => {
+    // Prevent duplicate API calls across component instances
+    if (isLoadingFromServer) {
+      return;
+    }
+
+    isLoadingFromServer = true;
     setIsAnalyzing(true);
     setError(null);
-    
+
     // Get current user ID from Firebase
         const currentUser = auth?.currentUser ?? null;
         if (!currentUser) {
           setError('User not authenticated. Please log in.');
           setIsAnalyzing(false);
+          isLoadingFromServer = false;
           return;
         }
         const userId = currentUser.uid;
@@ -121,6 +131,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       // Extract the analysis object from the response
       const analysisData = analysisRes.data.analysis || analysisRes.data;
       setAnalysisResult(analysisData);
+
       // Cache the data in IndexedDB
       await cacheManager.set(CACHE_KEYS.ANALYSIS_RESULT, analysisData);
 
@@ -136,8 +147,10 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       // Extract the conversion_plan object from the response
       const plannerData = plannerRes.data.conversion_plan || plannerRes.data;
       setConversionPlanner(plannerData);
+
       // Cache the data in IndexedDB
       await cacheManager.set(CACHE_KEYS.CONVERSION_PLANNER, plannerData);
+
       setAnalysisComplete(true);
     } catch (err) {
       // Keep the error user-friendly; devs can inspect console for details
@@ -145,6 +158,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       setError('Failed to load analysis from server');
     } finally {
       setIsAnalyzing(false);
+      isLoadingFromServer = false;
     }
   };
 
@@ -154,70 +168,65 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       try {
         // Prevent duplicate calls within this component instance
         if (hasLoadedRef.current) {
-          console.log('Already loaded in this component instance, skipping');
           return;
         }
 
         hasLoadedRef.current = true;
-
-        console.log('[CodeAnalysis] forceRefresh prop:', forceRefresh);
 
         // Check sessionStorage to see if we recently loaded analysis data
         const lastAnalysisLoadTime = sessionStorage.getItem('lastAnalysisLoadTime');
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
 
-        console.log('[CodeAnalysis] lastAnalysisLoadTime:', lastAnalysisLoadTime);
-        console.log('[CodeAnalysis] Time since last load:', lastAnalysisLoadTime ? (now - parseInt(lastAnalysisLoadTime)) / 1000 : 'N/A', 'seconds');
-
         // If forceRefresh is true, skip cache and fetch fresh data
         if (forceRefresh) {
-          console.log('Force refresh enabled, skipping cache and fetching fresh analysis data');
           await loadFromServer();
           sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
           return;
         }
 
-        // If we loaded analysis data recently (within 5 minutes) and forceRefresh is false, use cache
-        if (lastAnalysisLoadTime && (now - parseInt(lastAnalysisLoadTime)) < fiveMinutes) {
-          console.log('Analysis data was loaded recently, using cache instead of server');
-          // Load from IndexedDB cache
-          const cachedAnalysis = await cacheManager.get(CACHE_KEYS.ANALYSIS_RESULT);
-          const cachedPlanner = await cacheManager.get(CACHE_KEYS.CONVERSION_PLANNER);
-
-          if (cachedAnalysis && cachedPlanner) {
-            console.log('Using cached analysis and conversion plan data from IndexedDB');
-            setAnalysisResult(cachedAnalysis);
-            setConversionPlanner(cachedPlanner);
-            setIsAnalyzing(false);
-            setAnalysisComplete(true);
-            return;
-          }
-        }
-
-        // Try to load from IndexedDB cache first
+        // Always try to load from IndexedDB cache first
         const cachedAnalysis = await cacheManager.get(CACHE_KEYS.ANALYSIS_RESULT);
         const cachedPlanner = await cacheManager.get(CACHE_KEYS.CONVERSION_PLANNER);
 
         if (cachedAnalysis && cachedPlanner) {
-          console.log('Using cached analysis and conversion plan data from IndexedDB');
           setAnalysisResult(cachedAnalysis);
           setConversionPlanner(cachedPlanner);
           setIsAnalyzing(false);
           setAnalysisComplete(true);
-          sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
+
+          // Update last load time to prevent unnecessary server calls
+          if (!lastAnalysisLoadTime) {
+            sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
+          }
           return;
         }
 
-        // If no cache, load from server
-        console.log('No cache found, loading from server');
+        // If we loaded analysis data recently (within 5 minutes) but cache is missing, something is wrong
+        // Don't fetch again immediately
+        if (lastAnalysisLoadTime && (now - parseInt(lastAnalysisLoadTime)) < fiveMinutes) {
+          setError('Analysis data not found in cache. Please try refreshing.');
+          setIsAnalyzing(false);
+          return;
+        }
+
+        // If no cache and not recently loaded, load from server
         await loadFromServer();
         sessionStorage.setItem('lastAnalysisLoadTime', now.toString());
       } catch (err) {
         console.error('Error loading cached data:', err);
-        // Fallback to server on error
-        await loadFromServer();
-        sessionStorage.setItem('lastAnalysisLoadTime', Date.now().toString());
+        // Only fallback to server if we haven't loaded recently
+        const lastAnalysisLoadTime = sessionStorage.getItem('lastAnalysisLoadTime');
+        const now = Date.now();
+        const fiveMinutes = 5 * 60 * 1000;
+
+        if (!lastAnalysisLoadTime || (now - parseInt(lastAnalysisLoadTime)) > fiveMinutes) {
+          await loadFromServer();
+          sessionStorage.setItem('lastAnalysisLoadTime', Date.now().toString());
+        } else {
+          setError('Failed to load analysis data from cache.');
+          setIsAnalyzing(false);
+        }
       }
     };
 
