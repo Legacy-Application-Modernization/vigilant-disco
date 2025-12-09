@@ -1,11 +1,35 @@
-import type { FC } from 'react';
+import { type FC, useState } from 'react';
 import type { User } from '../../types/user';
+import { clearCacheKeepAuthAndNotifications } from '../../utils/migration';
 
 interface ProfileSettingsProps {
   user: User;
 }
 
 const ProfileSettings: FC<ProfileSettingsProps> = ({ user }) => {
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [cacheCleared, setCacheCleared] = useState(false);
+
+  const handleClearCache = async () => {
+    if (!confirm('Clear all cached data? This will force a fresh fetch from the server. Your auth session and notifications will be preserved.')) {
+      return;
+    }
+
+    setIsClearingCache(true);
+    setCacheCleared(false);
+
+    try {
+      await clearCacheKeepAuthAndNotifications();
+      setCacheCleared(true);
+      setTimeout(() => setCacheCleared(false), 3000);
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      alert('Failed to clear cache. Please try again.');
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -138,7 +162,43 @@ const ProfileSettings: FC<ProfileSettingsProps> = ({ user }) => {
           </div>
         </div>
       </div>
-      
+
+      <div>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Cache & Data</h3>
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-md">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h4 className="text-sm font-medium text-gray-900">Clear Cached Data</h4>
+                <p className="mt-1 text-sm text-gray-600">
+                  Remove all cached analysis results, conversion data, and repository information.
+                  This will force the app to fetch fresh data from the server.
+                  Your authentication and notifications will be preserved.
+                </p>
+              </div>
+              <button
+                onClick={handleClearCache}
+                disabled={isClearingCache}
+                className={`ml-4 px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+                  isClearingCache
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : cacheCleared
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-red-600 hover:bg-red-700'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500`}
+              >
+                {isClearingCache ? 'Clearing...' : cacheCleared ? 'Cleared!' : 'Clear Cache'}
+              </button>
+            </div>
+            {cacheCleared && (
+              <div className="mt-3 text-sm text-green-600">
+                Cache cleared successfully. The app will fetch fresh data on the next request.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="flex justify-end">
         <button className="mr-3 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
           Cancel

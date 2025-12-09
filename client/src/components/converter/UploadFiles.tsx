@@ -4,6 +4,7 @@ import { ChevronRight, GitBranch, Loader2, CheckCircle } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import backendService from '../../services/backend.service';
 import ErrorDisplay from '../common/ErrorDisplay';
+import { cacheManager } from '../../utils/cacheManager';
 
 interface Repository {
   name: string;
@@ -179,27 +180,18 @@ const UploadFiles: FC<UploadFilesProps> = ({
   };
 
   // Clear imported repository
-  const handleClearRepository = () => {
+  const handleClearRepository = async () => {
     setImportedRepo(null);
     setGitUrl('');
     setBranch('main');
     setError(null);
-    
+
     // Clear all cached data when user clears the repository
     localStorage.removeItem('selectedRepository');
-    localStorage.removeItem('cachedAnalysisResult');
-    localStorage.removeItem('cachedConversionPlanner');
-    localStorage.removeItem('cachedTransformationData');
-    
-    // Also clear all repository-specific caches
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('cachedAnalysisResult_') || 
-          key.startsWith('cachedConversionPlanner_') || 
-          key.startsWith('cachedTransformationData_')) {
-        localStorage.removeItem(key);
-      }
-    });
-    
+
+    // Clear IndexedDB cache
+    await cacheManager.clear();
+
     console.log('Cleared all cached data');
   };
 

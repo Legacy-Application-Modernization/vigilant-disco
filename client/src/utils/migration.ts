@@ -79,7 +79,7 @@ export async function clearAllCachedData(): Promise<void> {
   // Clear localStorage cache entries (keep UI preferences)
   const keysToKeep = ['ui-preferences']; // Zustand persisted state
   const allKeys = Object.keys(localStorage);
-  
+
   for (const key of allKeys) {
     if (!keysToKeep.includes(key)) {
       localStorage.removeItem(key);
@@ -87,4 +87,52 @@ export async function clearAllCachedData(): Promise<void> {
   }
 
   console.log('✅ All cached data cleared');
+}
+
+/**
+ * Clear only cached data while preserving auth tokens and notifications
+ * This will force a fresh fetch from the server for all cached data
+ * Note: This also clears workflow state (selectedRepository, currentProjectId) for a complete fresh start
+ */
+export async function clearCacheKeepAuthAndNotifications(): Promise<void> {
+  // Clear all IndexedDB cache (analysis results, conversion data, etc.)
+  await cacheManager.clear();
+
+  // Define keys to preserve
+  const keysToKeep = [
+    // Auth-related
+    'access_token',
+    'refresh_token',
+    'authToken',
+    'github_token',
+    'github_oauth_code',
+    'mcp_session_token',
+
+    // Notifications
+    'phase_notifications',
+
+    // UI preferences (Zustand store)
+    'ui-preferences',
+  ];
+
+  // Get all localStorage keys and filter based on patterns
+  const allKeys = Object.keys(localStorage);
+
+  for (const key of allKeys) {
+    // Keep if key is in the preserve list
+    if (keysToKeep.includes(key)) {
+      continue;
+    }
+
+    // Keep if key starts with Firebase auth prefix
+    if (key.startsWith('firebase:')) {
+      continue;
+    }
+
+    // Remove everything else (cached data, old tokens, etc.)
+    localStorage.removeItem(key);
+    console.log(`🧹 Cleared cache: ${key}`);
+  }
+
+  console.log('✅ Cache cleared. Auth tokens and notifications preserved.');
 }

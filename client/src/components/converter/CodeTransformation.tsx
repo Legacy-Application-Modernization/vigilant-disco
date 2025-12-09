@@ -1,12 +1,12 @@
 // components/converter/CodeTransformation.tsx
 import { useState, useEffect, useRef } from 'react';
 import type { FC } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ChevronDown, 
-  RefreshCw, 
-  File, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  RefreshCw,
+  File,
   Download,
   AlertCircle,
   CheckCircle2,
@@ -16,6 +16,7 @@ import {
 import { auth } from '../../config/firebase';
 import { backendApi } from '../../config/api';
 import { usePhaseNotifications } from '../../contexts/PhaseNotificationContext';
+import { cacheManager, CACHE_KEYS } from '../../utils/cacheManager';
 
 interface ConversionResult {
   source_file: string;
@@ -43,43 +44,19 @@ interface CodeTransformationProps {
   onBack: () => void;
   onNext: () => void;
   onCancelTransformation?: () => void;
+  forceRefresh?: boolean; // Force a fresh transformation instead of using cache
 }
 
-const CodeTransformation: FC<CodeTransformationProps> = ({ 
+const CodeTransformation: FC<CodeTransformationProps> = ({
   onBack,
   onNext,
-  onCancelTransformation
+  onCancelTransformation,
+  forceRefresh = false
 }) => {
   const { addNotification } = usePhaseNotifications();
   
-  // Initialize state from localStorage if available
-  const [transformationData, setTransformationData] = useState<TransformationData | null>(() => {
-    // Get current repository info
-    const storedRepo = localStorage.getItem('selectedRepository');
-    if (!storedRepo) return null;
-    
-    try {
-      const parsedRepo = JSON.parse(storedRepo);
-      const repoKey = `${parsedRepo.owner?.login || parsedRepo.owner}_${parsedRepo.name || parsedRepo.repo}`;
-      
-      // Check if we have cached data for this specific repository
-      const cacheKey = `cachedTransformationData_${repoKey}`;
-      const cached = localStorage.getItem(cacheKey);
-      
-      if (cached) {
-        try {
-          console.log('Found cached transformation data for repository:', repoKey);
-          return JSON.parse(cached);
-        } catch (e) {
-          console.error('Failed to parse cached transformation data', e);
-          return null;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse repository data', e);
-    }
-    return null;
-  });
+  // Initialize state - will load from IndexedDB on mount
+  const [transformationData, setTransformationData] = useState<TransformationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingPhases, setProcessingPhases] = useState(false); // Start as false, will be set to true when fetching starts
   const [currentPhase, setCurrentPhase] = useState(0);
@@ -91,31 +68,52 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
   // Fetch transformation data on mount
   useEffect(() => {
-    // If we already have cached data, just stop loading
-    if (transformationData) {
-      console.log('Using cached transformation data');
-      setLoading(false);
-      setProcessingPhases(false); // Mark processing as complete
-      return;
-    }
-
     // Only fetch once using ref to prevent duplicate calls in React Strict Mode
     if (hasFetchedRef.current) {
       console.log('Already fetched or fetching, skipping duplicate call');
       return;
     }
 
-    // Only fetch if we don't already have data
-    if (!transformationData && !error) {
-      hasFetchedRef.current = true;
-      fetchTransformationData();
-    }
+    hasFetchedRef.current = true;
+
+    const loadData = async () => {
+      try {
+        // If forceRefresh is true, skip cache and fetch fresh data
+        if (forceRefresh) {
+          console.log('Force refresh enabled, skipping cache and fetching fresh transformation data');
+          await fetchTransformationData();
+          return;
+        }
+
+        // Try to load from IndexedDB cache first
+        const cached = await cacheManager.get<TransformationData>(CACHE_KEYS.TRANSFORMATION_DATA);
+
+        if (cached) {
+          console.log('Using cached transformation data from IndexedDB');
+          setTransformationData(cached);
+          setLoading(false);
+          setProcessingPhases(false);
+          return;
+        }
+
+        // If no cache, fetch from server
+        console.log('No cache found, fetching transformation data from server');
+        await fetchTransformationData();
+      } catch (err) {
+        console.error('Error loading cached transformation data:', err);
+        // Fallback to server on error
+        await fetchTransformationData();
+      }
+    };
+
+    void loadData();
 
     // Cleanup function to handle component unmount
     return () => {
       // Don't reset the ref on unmount - we want to prevent refetch on remount
     };
-  }, []); // Empty dependency array - only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceRefresh]); // Re-run if forceRefresh changes
 
   const fetchTransformationData = async () => {
     try {
@@ -157,14 +155,14 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
       }
 
       // Get conversion planner to know how many phases to process
-      const cachedPlanner = localStorage.getItem('cachedConversionPlanner');
+      const cachedPlanner = await cacheManager.get(CACHE_KEYS.CONVERSION_PLANNER);
       if (!cachedPlanner) {
         setError('No conversion plan found. Please complete the analysis first.');
         setLoading(false);
         return;
       }
 
-      const conversionPlanner = JSON.parse(cachedPlanner);
+      const conversionPlanner = cachedPlanner;
       const phases = conversionPlanner.phases || [];
       
       if (phases.length === 0) {
@@ -267,12 +265,11 @@ const CodeTransformation: FC<CodeTransformationProps> = ({
 
       setTransformationData(finalData);
       setProcessingPhases(false);
-      
-      // Cache the data in localStorage with repository-specific key
+
+      // Cache the data in IndexedDB
+      await cacheManager.set(CACHE_KEYS.TRANSFORMATION_DATA, finalData);
       const repoKey = `${repoData.owner}_${repoData.repo}`;
-      const cacheKey = `cachedTransformationData_${repoKey}`;
-      localStorage.setItem(cacheKey, JSON.stringify(finalData));
-      console.log('✓ Cached transformation data for repository:', repoKey);
+      console.log('✓ Cached transformation data in IndexedDB for repository:', repoKey);
       console.log(`✓ Migration complete: ${allPhaseResults.length} phases processed`);
 
     } catch (err) {

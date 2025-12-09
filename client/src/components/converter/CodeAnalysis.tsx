@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  ArrowLeft, 
-  FileCode, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  FileCode,
+  CheckCircle2,
   Loader2,
   FileText,
   AlertCircle
 } from 'lucide-react';
 import { auth } from '../../config/firebase';
 import { backendApi } from '../../config/api';
+import { cacheManager, CACHE_KEYS } from '../../utils/cacheManager';
 
 // Data now fetched from backend endpoints instead of local JSON files
 // Endpoints used:
@@ -28,44 +29,23 @@ interface CodeAnalysisProps {
     owner?: string;
     repo?: string;
   };
+  forceRefresh?: boolean; // Force fresh analysis instead of using cache
 }
 
 const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   onBack,
   onStartTransformation,
   onViewReports,
-  repositoryData
+  repositoryData,
+  forceRefresh = false
 }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Initialize state from localStorage if available
-  const [analysisResult, setAnalysisResult] = useState<any>(() => {
-    const cached = localStorage.getItem('cachedAnalysisResult');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached analysis result', e);
-        return null;
-      }
-    }
-    return null;
-  });
-  
-  const [conversionPlanner, setConversionPlanner] = useState<any>(() => {
-    const cached = localStorage.getItem('cachedConversionPlanner');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {
-        console.error('Failed to parse cached conversion planner', e);
-        return null;
-      }
-    }
-    return null;
-  });
+  // Initialize state - will load from IndexedDB on mount
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [conversionPlanner, setConversionPlanner] = useState<any>(null);
 
   const loadFromServer = async () => {
     setIsAnalyzing(true);
@@ -138,8 +118,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       // Extract the analysis object from the response
       const analysisData = analysisRes.data.analysis || analysisRes.data;
       setAnalysisResult(analysisData);
-      // Cache the data in localStorage
-      localStorage.setItem('cachedAnalysisResult', JSON.stringify(analysisData));
+      // Cache the data in IndexedDB
+      await cacheManager.set(CACHE_KEYS.ANALYSIS_RESULT, analysisData);
 
       // Step 2: Wait for analysis to complete, then call create_migration_plan
       const plannerRes = await backendApi.post('/migration/create_migration_plan', {
@@ -153,8 +133,8 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       // Extract the conversion_plan object from the response
       const plannerData = plannerRes.data.conversion_plan || plannerRes.data;
       setConversionPlanner(plannerData);
-      // Cache the data in localStorage
-      localStorage.setItem('cachedConversionPlanner', JSON.stringify(plannerData));
+      // Cache the data in IndexedDB
+      await cacheManager.set(CACHE_KEYS.CONVERSION_PLANNER, plannerData);
       setAnalysisComplete(true);
     } catch (err) {
       // Keep the error user-friendly; devs can inspect console for details
@@ -166,30 +146,42 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   };
 
   useEffect(() => {
-    // If we already have cached data, just stop loading
-    if (analysisResult && conversionPlanner) {
-      console.log('Using cached analysis and conversion plan data');
-      setIsAnalyzing(false);
-      setAnalysisComplete(true);
-      return;
-    }
+    // Load cached data from IndexedDB and fallback to server
+    const loadData = async () => {
+      try {
+        // If forceRefresh is true, skip cache and fetch fresh data
+        if (forceRefresh) {
+          console.log('Force refresh enabled, skipping cache and fetching fresh analysis data');
+          await loadFromServer();
+          return;
+        }
 
-    // Only load data if we don't already have it
-    if (!analysisResult && !conversionPlanner && !error) {
-      // tiny delay for UI feedback (similar to previous behavior)
-      const t = setTimeout(() => {
-        void loadFromServer();
-      }, 500);
+        // Try to load from IndexedDB cache first
+        const cachedAnalysis = await cacheManager.get(CACHE_KEYS.ANALYSIS_RESULT);
+        const cachedPlanner = await cacheManager.get(CACHE_KEYS.CONVERSION_PLANNER);
 
-      return () => clearTimeout(t);
-    } else {
-      // If we already have data, mark as complete
-      setIsAnalyzing(false);
-      if (analysisResult && conversionPlanner) {
-        setAnalysisComplete(true);
+        if (cachedAnalysis && cachedPlanner) {
+          console.log('Using cached analysis and conversion plan data from IndexedDB');
+          setAnalysisResult(cachedAnalysis);
+          setConversionPlanner(cachedPlanner);
+          setIsAnalyzing(false);
+          setAnalysisComplete(true);
+          return;
+        }
+
+        // If no cache, load from server
+        console.log('No cache found, loading from server');
+        await loadFromServer();
+      } catch (err) {
+        console.error('Error loading cached data:', err);
+        // Fallback to server on error
+        await loadFromServer();
       }
-    }
-  }, []);
+    };
+
+    void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceRefresh]);
 
   const handleViewReports = () => {
     if (analysisResult && conversionPlanner) {
@@ -205,17 +197,23 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
   };
 
   const getEstimatedTime = () => {
-    if (!conversionPlanner?.phases) return 'N/A';
-    
+    if (!conversionPlanner?.phases || conversionPlanner.phases.length === 0) return 'N/A';
+
+    // Sum up estimated_time_days from all phases
     const totalDays = conversionPlanner.phases.reduce((sum: number, phase: any) => {
-      // Extract number from strings like "2 days", "3 weeks", etc.
+      // Check for estimated_time_days (numeric field)
+      if (phase.estimated_time_days != null) {
+        return sum + phase.estimated_time_days;
+      }
+
+      // Fallback: Extract number from strings like "2 days", "3 weeks", etc.
       const timeStr = phase.estimated_time || '';
       const match = timeStr.match(/(\d+)\s*(day|week|month)/i);
-      
+
       if (match) {
         const value = parseInt(match[1]);
         const unit = match[2].toLowerCase();
-        
+
         // Convert to days
         if (unit === 'week') {
           return sum + (value * 7);
@@ -227,7 +225,7 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
       }
       return sum;
     }, 0);
-    
+
     // Format the output nicely
     if (totalDays === 0) return 'N/A';
     if (totalDays < 7) return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;

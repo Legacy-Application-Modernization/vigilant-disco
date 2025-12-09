@@ -316,6 +316,7 @@ const AppContent: React.FC = () => {
               setReportsData(data);
               setActiveTab('reports');
             }}
+            forceRefresh={true}
           />
         );
       case 3:
@@ -334,6 +335,7 @@ const AppContent: React.FC = () => {
               setCurrentStep(4);
             }}
             onCancelTransformation={handleCancelTransformation}
+            forceRefresh={true}
           />
         );
       case 4:
