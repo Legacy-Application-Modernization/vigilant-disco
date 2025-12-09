@@ -3,7 +3,7 @@
  * This helps maintain backward compatibility during the transition period
  */
 
-import { cacheManager, CACHE_KEYS } from './cacheManager';
+import { cacheManager } from './cacheManager';
 
 /**
  * Migrate data from localStorage to IndexedDB
@@ -11,39 +11,39 @@ import { cacheManager, CACHE_KEYS } from './cacheManager';
  */
 export async function migrateFromLocalStorage(): Promise<void> {
   try {
-    const migrations = [
-      {
-        localStorageKey: 'cachedAnalysisResult',
-        indexedDBKey: CACHE_KEYS.ANALYSIS_RESULT,
-      },
-      {
-        localStorageKey: 'cachedConversionPlanner',
-        indexedDBKey: CACHE_KEYS.CONVERSION_PLANNER,
-      },
-      {
-        localStorageKey: 'cachedTransformationData',
-        indexedDBKey: CACHE_KEYS.TRANSFORMATION_DATA,
-      },
-      {
-        localStorageKey: 'selectedRepository',
-        indexedDBKey: CACHE_KEYS.SELECTED_REPOSITORY,
-      },
-    ];
+    // const migrations = [
+    //   {
+    //     localStorageKey: 'cachedAnalysisResult',
+    //     indexedDBKey: CACHE_KEYS.ANALYSIS_RESULT,
+    //   },
+    //   {
+    //     localStorageKey: 'cachedConversionPlanner',
+    //     indexedDBKey: CACHE_KEYS.CONVERSION_PLANNER,
+    //   },
+    //   {
+    //     localStorageKey: 'cachedTransformationData',
+    //     indexedDBKey: CACHE_KEYS.TRANSFORMATION_DATA,
+    //   },
+    //   {
+    //     localStorageKey: 'selectedRepository',
+    //     indexedDBKey: CACHE_KEYS.SELECTED_REPOSITORY,
+    //   },
+    // ];
 
-    for (const { localStorageKey, indexedDBKey } of migrations) {
-      const data = localStorage.getItem(localStorageKey);
-      if (data) {
-        try {
-          const parsedData = JSON.parse(data);
-          await cacheManager.set(indexedDBKey, parsedData);
-          // Clean up old localStorage entry
-          localStorage.removeItem(localStorageKey);
-          console.log(`✅ Migrated ${localStorageKey} to IndexedDB`);
-        } catch (error) {
-          console.error(`Failed to migrate ${localStorageKey}:`, error);
-        }
-      }
-    }
+    // for (const { localStorageKey, indexedDBKey } of migrations) {
+    //   const data = localStorage.getItem(localStorageKey);
+    //   if (data) {
+    //     try {
+    //       const parsedData = JSON.parse(data);
+    //       await cacheManager.set(indexedDBKey, parsedData);
+          
+    //       localStorage.removeItem(localStorageKey);
+    //       console.log(`✅ Migrated ${localStorageKey} to IndexedDB`);
+    //     } catch (error) {
+    //       console.error(`Failed to migrate ${localStorageKey}:`, error);
+    //     }
+    //   }
+    // }
 
     // Clean up old token storage (these are now handled by HTTP-only cookies)
     const deprecatedKeys = [

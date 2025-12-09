@@ -228,15 +228,20 @@ const CodeAnalysis: React.FC<CodeAnalysisProps> = ({
 
     // Format the output nicely
     if (totalDays === 0) return 'N/A';
-    if (totalDays < 7) return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`;
+    if (totalDays < 7) {
+      // Handle decimal days (e.g., 2.5 days)
+      return totalDays % 1 === 0 
+        ? `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`
+        : `${totalDays.toFixed(1)} days`;
+    }
     if (totalDays < 30) {
       const weeks = Math.floor(totalDays / 7);
-      const days = totalDays % 7;
+      const days = Math.round(totalDays % 7);
       if (days === 0) return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
       return `${weeks}w ${days}d`;
     }
     const months = Math.floor(totalDays / 30);
-    const remainingDays = totalDays % 30;
+    const remainingDays = Math.round(totalDays % 30);
     if (remainingDays === 0) return `${months} ${months === 1 ? 'month' : 'months'}`;
     return `${months}m ${remainingDays}d`;
   };
