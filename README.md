@@ -79,6 +79,7 @@ npm run dev
 ```
 
 This starts:
+Confirm very step before, you start testing any migration.
 - **Backend Server**: http://localhost:3001
 - **Frontend Client**: http://localhost:5173
 - **Backend API (Python)**: Should run separately on http://127.0.0.1:8000
